@@ -23,7 +23,7 @@ of Cardiology, 64(5), 304-310.
 
 Authors:
 Ishat Shivhare
-[Group Member 2 Name]
+Tarachand Jakhar
 [Group Member 3 Name]
 [Group Member 4 Name]
 
