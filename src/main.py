@@ -3,6 +3,7 @@ Heart Disease Prediction Model Training Pipeline
 
 This script implements a machine learning pipeline that:
 - Loads and combines multiple datasets
+- Processes medical report images
 - Preprocesses the data
 - Trains a Random Forest classifier
 - Evaluates model performance
@@ -23,7 +24,7 @@ of Cardiology, 64(5), 304-310.
 
 Authors:
 Ishat Shivhare
-[Group Member 2 Name]
+Tarachand Jakhar
 [Group Member 3 Name]
 [Group Member 4 Name]
 
@@ -42,7 +43,8 @@ from src.utils import save_model
 from config.config import (
     DATA_DIR, DATASETS, COLUMN_NAMES,
     RANDOM_STATE, TEST_SIZE,
-    MODEL_DIR, MODEL_FILENAME
+    MODEL_DIR, MODEL_FILENAME,
+    IMAGE_DATA_DIR
 )
 from src.data_processing import perform_eda
 
@@ -55,9 +57,9 @@ def main():
     print("\nLoading and combining datasets...")
     df = load_and_combine_datasets(DATA_DIR, DATASETS, COLUMN_NAMES)
     
-    # Clean the data
+    # Clean the data and process images if available
     print("\nCleaning and preprocessing the data...")
-    df = clean_data(df)
+    df = clean_data(df, image_dir=IMAGE_DATA_DIR)
     
     # Perform EDA
     print("\nPerforming Exploratory Data Analysis...")

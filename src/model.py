@@ -9,8 +9,13 @@ import pandas as pd
 from typing import Tuple
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
+<<<<<<< HEAD
 from sklearn.metrics import accuracy_score, classification_report
 from sklearn.model_selection import StratifiedKFold
+=======
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, ConfusionMatrixDisplay
+import matplotlib.pyplot as plt
+>>>>>>> 23771354e5a7adfdcadef0eaa1aa405f7ac9e093
 
 def train_model(
     x_train: pd.DataFrame,
@@ -95,5 +100,18 @@ def evaluate_model(
     print("\nDetailed Classification Report:")
     report = classification_report(y_test, y_pred, output_dict=True)
     print(classification_report(y_test, y_pred))
+<<<<<<< HEAD
 
     return accuracy, report
+=======
+    
+    # Compute and display confusion matrix
+    cm = confusion_matrix(y_test, y_pred)
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm)
+    disp.plot(cmap='Blues')
+    
+    # Show the plot (if using a script, this may be necessary)
+    plt.show()
+    
+    return accuracy, report
+>>>>>>> 23771354e5a7adfdcadef0eaa1aa405f7ac9e093
