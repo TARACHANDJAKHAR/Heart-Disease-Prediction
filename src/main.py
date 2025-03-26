@@ -25,8 +25,8 @@ of Cardiology, 64(5), 304-310.
 Authors:
 Ishat Shivhare
 Tarachand Jakhar
-[Group Member 3 Name]
-[Group Member 4 Name]
+Vedang Dubey
+Parth Parmaar
 
 Date: 2025-03-23
 """
