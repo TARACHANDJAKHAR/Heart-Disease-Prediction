@@ -7,6 +7,7 @@ import os
 # Data directories
 DATA_DIR = os.path.join("data", "processed")
 RAW_DATA_DIR = os.path.join("data", "raw")
+IMAGE_DATA_DIR = os.path.join("data", "images")
 
 # Dataset files
 DATASETS = [
@@ -21,6 +22,13 @@ COLUMN_NAMES = [
     "age", "sex", "cp", "trestbps", "chol", "fbs", "restecg", 
     "thalach", "exang", "oldpeak", "slope", "ca", "thal", "target"
 ]
+
+# Image processing settings
+SUPPORTED_IMAGE_FORMATS = ['.jpg', '.jpeg', '.png', '.tiff']
+IMAGE_PREPROCESSING = {
+    'resize': (224, 224),
+    'normalize': True
+}
 
 # Model parameters
 RANDOM_STATE = 42

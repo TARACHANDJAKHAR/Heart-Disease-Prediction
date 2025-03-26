@@ -7,9 +7,10 @@ for the heart disease prediction model.
 
 import pandas as pd
 import numpy as np
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 from sklearn.model_selection import train_test_split
 import os
+from .image_processing import process_medical_image, combine_image_and_tabular_data
 
 def load_and_combine_datasets(data_dir: str, datasets: List[str], column_names: List[str]) -> pd.DataFrame:
     """
@@ -27,18 +28,39 @@ def load_and_combine_datasets(data_dir: str, datasets: List[str], column_names: 
                for file in datasets]
     return pd.concat(df_list, ignore_index=True)
 
-def clean_data(df: pd.DataFrame) -> pd.DataFrame:
+def process_image_data(image_dir: str, patient_ids: List[str]) -> Dict[str, Dict[str, float]]:
     """
-    Clean and preprocess the dataset.
+    Process medical report images for a list of patients.
 
-    This function performs the following cleaning steps:
-    1. Replaces missing values (marked as '?') with NaN
-    2. Converts all numeric columns to numeric type (except binary categorical variables)
-    3. Removes rows with missing values
-    4. Binarizes the target variable (0 for no heart disease, 1 for presence)
+    Args:
+        image_dir (str): Directory containing medical report images
+        patient_ids (List[str]): List of patient IDs to process
+
+    Returns:
+        Dict[str, Dict[str, float]]: Dictionary mapping patient IDs to extracted measurements
+    """
+    image_data = {}
+    
+    for patient_id in patient_ids:
+        # Look for image files with patient ID in the filename
+        for file in os.listdir(image_dir):
+            if patient_id in file and any(file.lower().endswith(ext) for ext in ['.jpg', '.jpeg', '.png', '.tiff']):
+                try:
+                    image_path = os.path.join(image_dir, file)
+                    measurements = process_medical_image(image_path)
+                    image_data[patient_id] = measurements
+                except Exception as e:
+                    print(f"Error processing image for patient {patient_id}: {str(e)}")
+    
+    return image_data
+
+def clean_data(df: pd.DataFrame, image_dir: str = None) -> pd.DataFrame:
+    """
+    Clean and preprocess the dataset, incorporating image data if available.
 
     Args:
         df (pd.DataFrame): Input DataFrame to clean
+        image_dir (str, optional): Directory containing medical report images
 
     Returns:
         pd.DataFrame: Cleaned DataFrame ready for model training
@@ -64,6 +86,21 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
             print(f"Unique values in {col}: {df[col].unique()}")
         except Exception as e:
             print(f"Error converting {col} to numeric: {str(e)}")
+    
+    # Process image data if available
+    if image_dir and os.path.exists(image_dir):
+        print("\nProcessing medical report images...")
+        patient_ids = df.index.astype(str).tolist()
+        image_data = process_image_data(image_dir, patient_ids)
+        
+        # Combine image data with tabular data
+        for patient_id, measurements in image_data.items():
+            if patient_id in df.index:
+                row_data = df.loc[patient_id].to_dict()
+                combined_data = combine_image_and_tabular_data(measurements, row_data)
+                for key, value in combined_data.items():
+                    if key in df.columns:
+                        df.loc[patient_id, key] = value
     
     # Display DataFrame info after conversion
     print("\nDataFrame Info After Conversion:")
