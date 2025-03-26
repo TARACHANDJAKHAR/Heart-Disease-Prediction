@@ -9,7 +9,8 @@ import pandas as pd
 from typing import Tuple
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
-from sklearn.metrics import accuracy_score, classification_report
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, ConfusionMatrixDisplay
+import matplotlib.pyplot as plt
 
 def train_model(x_train: pd.DataFrame, y_train: pd.Series, 
                 n_estimators: int = 100, random_state: int = 42) -> RandomForestClassifier:
@@ -75,5 +76,13 @@ def evaluate_model(model: RandomForestClassifier, x_test: pd.DataFrame, y_test: 
     print("\nDetailed Classification Report:")
     report = classification_report(y_test, y_pred, output_dict=True)
     print(classification_report(y_test, y_pred))
+    
+    # Compute and display confusion matrix
+    cm = confusion_matrix(y_test, y_pred)
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm)
+    disp.plot(cmap='Blues')
+    
+    # Show the plot (if using a script, this may be necessary)
+    plt.show()
     
     return accuracy, report
