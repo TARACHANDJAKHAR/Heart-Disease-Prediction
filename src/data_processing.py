@@ -10,11 +10,8 @@ import numpy as np
 from typing import List, Tuple, Dict
 from sklearn.model_selection import train_test_split
 import os
-<<<<<<< HEAD
 from autoviz.AutoViz_Class import AutoViz_Class
-=======
 from .image_processing import process_medical_image, combine_image_and_tabular_data
->>>>>>> 23771354e5a7adfdcadef0eaa1aa405f7ac9e093
 
 
 def load_and_combine_datasets(
@@ -37,12 +34,7 @@ def load_and_combine_datasets(
     ]
     return pd.concat(df_list, ignore_index=True)
 
-<<<<<<< HEAD
-
-def clean_data(df: pd.DataFrame) -> pd.DataFrame:
-=======
 def process_image_data(image_dir: str, patient_ids: List[str]) -> Dict[str, Dict[str, float]]:
->>>>>>> 23771354e5a7adfdcadef0eaa1aa405f7ac9e093
     """
     Process medical report images for a list of patients.
 
@@ -109,9 +101,6 @@ def clean_data(df: pd.DataFrame, image_dir: str = None) -> pd.DataFrame:
             print(f"Unique values in {col}: {df[col].unique()}")
         except Exception as e:
             print(f"Error converting {col} to numeric: {str(e)}")
-<<<<<<< HEAD
-
-=======
     
     # Process image data if available
     if image_dir and os.path.exists(image_dir):
@@ -128,7 +117,6 @@ def clean_data(df: pd.DataFrame, image_dir: str = None) -> pd.DataFrame:
                     if key in df.columns:
                         df.loc[patient_id, key] = value
     
->>>>>>> 23771354e5a7adfdcadef0eaa1aa405f7ac9e093
     # Display DataFrame info after conversion
     print("\nDataFrame Info After Conversion:")
     print(df.info())
