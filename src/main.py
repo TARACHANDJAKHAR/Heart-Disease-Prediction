@@ -44,6 +44,7 @@ from config.config import (
     RANDOM_STATE, TEST_SIZE,
     MODEL_DIR, MODEL_FILENAME
 )
+from src.data_processing import perform_eda
 
 def main():
     """Main execution function for the heart disease prediction model training pipeline."""
@@ -58,6 +59,10 @@ def main():
     print("\nCleaning and preprocessing the data...")
     df = clean_data(df)
     
+    # Perform EDA
+    print("\nPerforming Exploratory Data Analysis...")
+    perform_eda(df, save_dir="HeartDisease_EDA_Images")
+
     # Split the data
     print("\nSplitting data into training and test sets...")
     x_train, x_test, y_train, y_test = split_data(df, test_size=TEST_SIZE, random_state=RANDOM_STATE)

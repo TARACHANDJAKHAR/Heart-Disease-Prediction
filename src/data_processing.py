@@ -10,8 +10,12 @@ import numpy as np
 from typing import List, Tuple
 from sklearn.model_selection import train_test_split
 import os
+from autoviz.AutoViz_Class import AutoViz_Class
 
-def load_and_combine_datasets(data_dir: str, datasets: List[str], column_names: List[str]) -> pd.DataFrame:
+
+def load_and_combine_datasets(
+    data_dir: str, datasets: List[str], column_names: List[str]
+) -> pd.DataFrame:
     """
     Load and combine multiple heart disease datasets into a single DataFrame.
 
@@ -23,9 +27,12 @@ def load_and_combine_datasets(data_dir: str, datasets: List[str], column_names: 
     Returns:
         pd.DataFrame: Combined dataset containing all records
     """
-    df_list = [pd.read_csv(os.path.join(data_dir, file), names=column_names, header=None) 
-               for file in datasets]
+    df_list = [
+        pd.read_csv(os.path.join(data_dir, file), names=column_names, header=None)
+        for file in datasets
+    ]
     return pd.concat(df_list, ignore_index=True)
+
 
 def clean_data(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -46,46 +53,58 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
     # Display initial data types for verification
     print("\nInitial DataFrame Data Types:")
     print(df.dtypes)
-    
+
     # Replace missing values
-    df.replace('?', np.nan, inplace=True)
-    
+    df.replace("?", np.nan, inplace=True)
+
     # Define columns that should be numeric
     numeric_columns = [
-        "age", "cp", "trestbps", "chol", "restecg", 
-        "thalach", "exang", "oldpeak", "slope", "ca", "thal"
+        "age",
+        "cp",
+        "trestbps",
+        "chol",
+        "restecg",
+        "thalach",
+        "exang",
+        "oldpeak",
+        "slope",
+        "ca",
+        "thal",
     ]
-    
+
     # Convert numeric columns with error handling
     for col in numeric_columns:
         try:
-            df[col] = pd.to_numeric(df[col], errors='coerce')
+            df[col] = pd.to_numeric(df[col], errors="coerce")
             print(f"\nConverted {col} column to numeric type")
             print(f"Unique values in {col}: {df[col].unique()}")
         except Exception as e:
             print(f"Error converting {col} to numeric: {str(e)}")
-    
+
     # Display DataFrame info after conversion
     print("\nDataFrame Info After Conversion:")
     print(df.info())
-    
+
     # Remove rows with missing values
     missing_before = df.isnull().sum()
     df.dropna(inplace=True)
     missing_after = df.isnull().sum()
-    
+
     print("\nMissing Values Before and After Cleaning:")
     print("Before:")
     print(missing_before[missing_before > 0])
     print("\nAfter:")
     print(missing_after[missing_after > 0])
-    
+
     # Binarize target variable
     df["target"] = df["target"].apply(lambda x: 1 if x > 0 else 0)
-    
+
     return df
 
-def split_data(df: pd.DataFrame, test_size: float = 0.2, random_state: int = 42) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
+
+def split_data(
+    df: pd.DataFrame, test_size: float = 0.2, random_state: int = 42
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
     """
     Split the dataset into training and testing sets.
 
@@ -95,9 +114,43 @@ def split_data(df: pd.DataFrame, test_size: float = 0.2, random_state: int = 42)
         random_state (int): Random state for reproducibility
 
     Returns:
-        Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]: 
+        Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
             x_train, x_test, y_train, y_test
     """
-    x = df.drop(columns=["target"])
-    y = df["target"]
-    return train_test_split(x, y, test_size=test_size, random_state=random_state, stratify=y) 
+    x = df.drop(columns=["target"])  # leaving only input features (Dataframe)
+    y = df["target"]  # Series
+    return train_test_split(
+        x, y, test_size=test_size, random_state=random_state, stratify=y
+    )
+    # stratify=y argument ensures that the proportion of each class in the "target" column remains consistent between the training and testing datasets.(in our case, heart disease 0 or 1)
+
+
+def perform_eda(df: pd.DataFrame, target_col: str = "target", save_dir: str = "EDA_Reports"):
+    """
+    Perform automated EDA with image outputs.
+    Creates directory if it doesn't exist.
+    """
+    # Create directory if missing
+    os.makedirs(save_dir, exist_ok=True)
+    
+    av = AutoViz_Class()
+    
+    print(f"\nGenerating EDA images in '{save_dir}'...")
+    av.AutoViz(
+        filename="",
+        sep=",",
+        depVar=target_col,
+        dfte=df,
+        header=0,
+        verbose=1,
+        chart_format='png',
+        max_rows_analyzed=15000,
+        max_cols_analyzed=30,
+        save_plot_dir=save_dir
+    )
+    
+    # Verify creation
+    if os.path.exists(save_dir):
+        print(f"Saved {len(os.listdir(save_dir))} EDA images to {save_dir}")
+    else:
+        print("Error: EDA directory not created successfully")
