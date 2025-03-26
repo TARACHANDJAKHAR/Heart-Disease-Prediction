@@ -1,0 +1,14 @@
+41 models - 
+    6 basic: logistic regression, decision tree, random forest, stochastic gradient descent, svm, knn 
+    ensemble (3, 4)  ---> final model
+
+Deployment
+
+
+
+neural models:
+    lstm, bilstm, transformer
+
+
+
+Lime implementation for interpretability
