@@ -37,3 +37,4 @@ TEST_SIZE = 0.2
 # Model directory and filename
 MODEL_DIR = "models"
 MODEL_FILENAME = "heart_disease_model.pkl" 
+MODEL_FILENAME_DT = "decision_tree_model.pkl"

@@ -43,7 +43,7 @@ from src.utils import save_model
 from config.config import (
     DATA_DIR, DATASETS, COLUMN_NAMES,
     RANDOM_STATE, TEST_SIZE,
-    MODEL_DIR, MODEL_FILENAME,
+    MODEL_DIR, MODEL_FILENAME,MODEL_FILENAME_DT,
     IMAGE_DATA_DIR
 )
 
@@ -73,6 +73,17 @@ def main():
     
     # Save the model
     save_model(rf_model, MODEL_FILENAME, model_dir=MODEL_DIR)
+
+    # Train Decision Tree model
+    print("\nTraining Decision Tree model...")
+    dt_model = train_model(x_train, y_train, random_state=RANDOM_STATE)
+    
+    # Evaluate Decision Tree model
+    dt_accuracy, dt_report = evaluate_model(dt_model, x_test, y_test)
+
+    #save desicion tree
+    save_model(dt_model, MODEL_FILENAME_DT, model_dir=MODEL_DIR)
+    
     
     print("\nPipeline completed successfully!")
     print("=" * 50)
