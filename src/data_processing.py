@@ -131,6 +131,9 @@ def clean_data(df: pd.DataFrame, image_dir: str = None) -> pd.DataFrame:
     print("\nAfter:")
     print(missing_after[missing_after > 0])
 
+    duplicate_count = df.duplicated().sum()  # Count the number of duplicated rows
+    print(f"\nNumber of exact duplicate rows: {duplicate_count}")
+    
     # Binarize target variable
     df["target"] = df["target"].apply(lambda x: 1 if x > 0 else 0)
 
