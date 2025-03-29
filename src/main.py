@@ -28,12 +28,19 @@ Vedang Dubey
 Tarachand Jhakhar
 
 Date: 2025-03-23
-"""
 
+Key Changes from Logistic Regression:
+1. Replaced Logistic Regression with SGDClassifier
+2. Added online learning capability
+3. Modified preprocessing for chunked data
+4. Added calibration for probability outputs
+"""
 
 import os
 import sys
-import joblib  # NEW: For saving preprocessing objects
+import joblib
+from sklearn.linear_model import SGDClassifier  # CHANGED
+from sklearn.calibration import CalibratedClassifierCV  # NEW
 
 # Add the project root directory to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -41,22 +48,25 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.data_processing import (
     load_and_combine_datasets, 
     clean_data, 
-    preprocess_data,  # NEW: Added preprocessing function
-    split_data
+    preprocess_data,
+    split_data,
+    data_generator  # NEW
 )
-from src.model import train_logistic_regression, evaluate_model  # CHANGED: Specific LR training
+from src.model import train_sgd_model, evaluate_model  # CHANGED
 from src.utils import save_model
 from config.config import (
     DATA_DIR, DATASETS, COLUMN_NAMES,
     RANDOM_STATE, TEST_SIZE,
     MODEL_DIR, MODEL_FILENAME,
-    # NEW: Added logistic regression specific parameters
-    MAX_ITER, C, SOLVER, PENALTY, CLASS_WEIGHT  
+    # SGD-specific parameters
+    LOSS, PENALTY, ALPHA, 
+    MAX_ITER, LEARNING_RATE, TOL,
+    SGD_CHUNK_SIZE  # NEW
 )
 
 def main():
-    """Main execution function for the logistic regression training pipeline."""
-    print("Starting Heart Disease Prediction Model Training (Logistic Regression)")
+    """Main execution function for SGD training pipeline."""
+    print("Starting Heart Disease Prediction Model Training (SGD)")
     print("=" * 50)
 
     # Load and combine datasets
@@ -67,9 +77,9 @@ def main():
     print("\n[2/6] Cleaning and preprocessing the data...")
     df = clean_data(df)
     
-    # NEW: Preprocess data (scaling + encoding)
-    print("\n[3/6] Applying logistic regression-specific preprocessing...")
-    df_processed, scaler = preprocess_data(df)  # Get both data and scaler
+    # Preprocess data (shuffles and creates scaler)
+    print("\n[3/6] Applying SGD-specific preprocessing...")
+    df_processed, scaler = preprocess_data(df)  # Returns shuffled data
     
     # Split the data
     print("\n[4/6] Splitting data into training and test sets...")
@@ -79,25 +89,30 @@ def main():
         random_state=RANDOM_STATE
     )
     
-    # Train the model (CHANGED to logistic regression)
-    print("\n[5/6] Training Logistic Regression model...")
-    lr_model = train_logistic_regression(
+    # Train the model (CHANGED to SGD)
+    print("\n[5/6] Training SGD model...")
+    sgd_model = train_sgd_model(
         x_train, y_train,
-        max_iter=MAX_ITER,
-        C=C,
-        solver=SOLVER,
+        loss=LOSS,
         penalty=PENALTY,
-        class_weight=CLASS_WEIGHT,
+        alpha=ALPHA,
+        max_iter=MAX_ITER,
+        learning_rate=LEARNING_RATE,
+        tol=TOL,
         random_state=RANDOM_STATE
     )
     
-    # Evaluate the model
-    accuracy, report = evaluate_model(lr_model, x_test, y_test)
+    # NEW: Calibrate for better probability estimates
+    print("Calibrating model probabilities...")
+    calibrated_model = CalibratedClassifierCV(sgd_model, cv=5)
+    calibrated_model.fit(x_train, y_train)
     
-    # Save the model and preprocessing objects (MODIFIED)
+    # Evaluate the model
+    accuracy, report = evaluate_model(calibrated_model, x_test, y_test)
+    
+    # Save the model and preprocessing objects
     print("\n[6/6] Saving model and preprocessing artifacts...")
-    save_model(lr_model, MODEL_FILENAME, model_dir=MODEL_DIR)
-    joblib.dump(scaler, os.path.join(MODEL_DIR, 'scaler.pkl'))  # NEW: Save scaler
+    save_model(calibrated_model, MODEL_FILENAME, model_dir=MODEL_DIR, scaler=scaler)
     
     print("\nPipeline completed successfully!")
     print("=" * 50)

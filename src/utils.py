@@ -1,39 +1,40 @@
 """
-Utility functions for model persistence and common operations (Logistic Regression Enhanced)
+Utility functions for model persistence and operations (SGD Enhanced)
 
-Key additions for Logistic Regression:
-1. Added scaler saving/loading
-2. Model validation checks
-3. Version compatibility handling
+Key additions for SGD:
+1. Added partial model saving/loading
+2. Online learning checkpoint support
+3. Enhanced memory efficiency
+4. SGD-specific validation
 """
 
 import os
 import joblib
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 import warnings
 from sklearn.base import BaseEstimator
 from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import SGDClassifier
+from sklearn.calibration import CalibratedClassifierCV
 
-def save_model(model: BaseEstimator, filename: str, 
+def save_model(model: Union[SGDClassifier, CalibratedClassifierCV], 
+              filename: str,
               model_dir: Optional[str] = None,
-              scaler: Optional[StandardScaler] = None) -> None:
+              scaler: Optional[StandardScaler] = None,
+              partial: bool = False) -> None:
     """
-    Save a trained model and optional preprocessing objects.
+    Save SGD model with enhanced options for online learning.
     
-    Enhanced for Logistic Regression by:
-    - Adding scaler persistence
-    - Model type validation
-    - Version checking
-
     Args:
-        model: The trained model (must be a scikit-learn estimator)
-        filename: Name of the model file (.pkl recommended)
-        model_dir: Directory to save the model
-        scaler: Optional StandardScaler object to save
+        model: SGD model or calibrated model
+        filename: Output filename (.pkl or .joblib)
+        model_dir: Target directory
+        scaler: Optional scaler object
+        partial: If True, saves partial fit progress
     """
     # Validate model type
-    if not isinstance(model, BaseEstimator):
-        raise ValueError("Model must be a scikit-learn BaseEstimator")
+    if not isinstance(model, (SGDClassifier, CalibratedClassifierCV)):
+        raise ValueError("Model must be SGDClassifier or CalibratedClassifierCV")
     
     # Create directory if needed
     if model_dir:
@@ -42,59 +43,80 @@ def save_model(model: BaseEstimator, filename: str,
     else:
         model_path = filename
     
-    # Save model
-    joblib.dump(model, model_path)
-    print(f"Model saved to {model_path}")
+    # NEW: Handle partial fit models differently
+    if partial and isinstance(model, SGDClassifier):
+        checkpoint = {
+            'model': model,
+            'n_iter': model.n_iter_,
+            't_': model.t_  # Learning state
+        }
+        joblib.dump(checkpoint, model_path)
+    else:
+        joblib.dump(model, model_path)
     
-    # NEW: Save scaler if provided (critical for LR)
+    print(f"SGD model saved to {model_path}")
+    
+    # Save scaler if provided
     if scaler is not None:
-        scaler_path = os.path.join(model_dir, 'scaler.pkl') if model_dir else 'scaler.pkl'
+        scaler_path = os.path.join(model_dir, 'sgd_scaler.pkl') if model_dir else 'sgd_scaler.pkl'
         joblib.dump(scaler, scaler_path)
         print(f"Scaler saved to {scaler_path}")
 
-def load_model(filename: str, 
+def load_model(filename: str,
               model_dir: Optional[str] = None,
-              load_scaler: bool = False) -> Tuple[BaseEstimator, Optional[StandardScaler]]:
+              load_scaler: bool = False,
+              is_partial: bool = False) -> Tuple[Union[SGDClassifier, CalibratedClassifierCV], Optional[StandardScaler]]:
     """
-    Load a model and optionally its scaler.
+    Load SGD model with online learning support.
     
-    Enhanced with:
-    - Scaler loading
-    - Version compatibility warnings
-    - Type hints
-
     Args:
         filename: Model filename
-        model_dir: Directory containing the model
+        model_dir: Directory path
         load_scaler: Whether to load associated scaler
-
+        is_partial: If loading a partial fit checkpoint
+        
     Returns:
-        Tuple of (model, scaler) where scaler is None if not loaded
+        Tuple of (model, scaler)
     """
-    # Construct paths
     model_path = os.path.join(model_dir, filename) if model_dir else filename
-    scaler_path = os.path.join(model_dir, 'scaler.pkl') if model_dir else 'scaler.pkl'
+    scaler_path = os.path.join(model_dir, 'sgd_scaler.pkl') if model_dir else 'sgd_scaler.pkl'
     
-    # Load model with version check
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")  # Suppress version warnings
-        model = joblib.load(model_path)
+    # NEW: Handle partial fit checkpoints
+    if is_partial:
+        checkpoint = joblib.load(model_path)
+        model = checkpoint['model']
+        model.n_iter_ = checkpoint['n_iter']
+        model.t_ = checkpoint['t_']
+    else:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            model = joblib.load(model_path)
     
-    # NEW: Load scaler if requested (required for LR)
+    # Load scaler if requested
     scaler = None
     if load_scaler:
         try:
             scaler = joblib.load(scaler_path)
-            print("Successfully loaded scaler")
+            print("Loaded SGD scaler successfully")
         except FileNotFoundError:
-            print("Warning: No scaler found - ensure you're loading pre-scaled data")
+            print("Warning: Scaler not found - using unscaled data")
     
-    return model, scaler  # NEW: Returns both model and scaler
+    return model, scaler
 
-# NEW: Added validation function specifically for Logistic Regression
-def validate_lr_model(model: BaseEstimator) -> None:
-    """Check if model has logistic regression attributes"""
-    if not hasattr(model, 'predict_proba'):
-        raise ValueError("Model must support predict_proba for logistic regression")
-    if not hasattr(model, 'classes_'):
-        raise ValueError("Invalid model - missing classes_ attribute")
+# NEW: SGD-specific validation
+def validate_sgd_model(model: BaseEstimator) -> None:
+    """Check if model has SGD-specific attributes"""
+    if not hasattr(model, 'partial_fit'):
+        raise ValueError("Model must support partial_fit for online learning")
+    if not hasattr(model, 't_'):
+        raise ValueError("Invalid SGD model - missing training state")
+
+# NEW: Create learning rate schedule
+def create_learning_schedule(initial_rate: float = 0.1, 
+                           decay: float = 0.5) -> dict:
+    """Generate learning rate schedule for SGD"""
+    return {
+        'learning_rate': 'optimal',
+        'eta0': initial_rate,
+        'power_t': decay
+    }
