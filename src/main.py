@@ -46,6 +46,7 @@ from config.config import (
     MODEL_DIR, MODEL_FILENAME,
     IMAGE_DATA_DIR
 )
+from model import train_svm_model, train_knn_model
 
 def main():
     """Main execution function for the heart disease prediction model training pipeline."""
@@ -65,14 +66,22 @@ def main():
     x_train, x_test, y_train, y_test = split_data(df, test_size=TEST_SIZE, random_state=RANDOM_STATE)
     
     # Train the model
-    print("\nTraining Random Forest model...")
-    rf_model = train_model(x_train, y_train, random_state=RANDOM_STATE)
-    
-    # Evaluate the model
-    accuracy, report = evaluate_model(rf_model, x_test, y_test)
+    # print("\nTraining Random Forest model...")
+    # rf_model = train_model(x_train, y_train, random_state=RANDOM_STATE)
+    # accuracy, report = evaluate_model(rf_model, x_test, y_test)
+
+    # To use SVM:
+    print("\nTraining SVM model...")
+    svm_model = train_svm_model(x_train, y_train)
+    svm_accuracy, svm_report = evaluate_model(svm_model, x_test, y_test)
+
+    # To use KNN:
+    # print("\nTraining KNN model...")
+    # knn_model = train_knn_model(x_train, y_train)
+    # knn_accuracy, knn_report = evaluate_model(knn_model, x_test, y_test)
     
     # Save the model
-    save_model(rf_model, MODEL_FILENAME, model_dir=MODEL_DIR)
+    save_model(svm_model, "svm"+MODEL_FILENAME, model_dir=MODEL_DIR)
     
     print("\nPipeline completed successfully!")
     print("=" * 50)
