@@ -1,5 +1,5 @@
 """
-Configuration settings for SGD Classifier
+Configuration settings for the project.
 """
 
 import os
@@ -16,25 +16,24 @@ DATASETS = [
     "processed.va.data"
 ]
 
-# Column names
+# Column names for the dataset
 COLUMN_NAMES = [
     "age", "sex", "cp", "trestbps", "chol", "fbs", "restecg", 
     "thalach", "exang", "oldpeak", "slope", "ca", "thal", "target"
 ]
 
-# Model parameters
+# Model parameters (Updated for Logistic Regression)
 RANDOM_STATE = 42
 TEST_SIZE = 0.2
 
-# SGD-specific parameters
-LOSS = 'log_loss'          # Equivalent to Logistic Regression
-PENALTY = 'l2'             # Regularization
-ALPHA = 0.0001             # Regularization strength
-MAX_ITER = 1000            # Epochs
-LEARNING_RATE = 'optimal'  # Adaptive learning rate
-TOL = 1e-4                 # Stopping tolerance
-
-# Model persistence
+# Model directory and filename
 MODEL_DIR = "models"
-MODEL_FILENAME = "sgd_classifier.pkl"
-SCALER_FILENAME = "sgd_scaler.pkl"
+MODEL_FILENAME = "logistic_regression_model.pkl"
+
+# Logistic Regression Hyperparameters
+LOGISTIC_PARAMS = {
+    "C": [0.1, 1.0, 10.0],       # Inverse regularization strength
+    "penalty": ["l1", "l2"],      # Regularization type
+    "solver": ["liblinear"],      # Solver for small datasets
+    "max_iter": [100, 200, 300]   # Maximum iterations
+}
