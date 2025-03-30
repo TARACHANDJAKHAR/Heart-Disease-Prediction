@@ -1,45 +1,58 @@
 """
-Model Training and Evaluation Module for Logistic Regression
+Model Training and Evaluation
 """
 
-import pandas as pd
-from typing import Tuple
-from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import accuracy_score, classification_report
+import pandas as pd
+from typing import Tuple, Union
 
-def train_model(x_train: pd.DataFrame, y_train: pd.Series, random_state: int = 42) -> LogisticRegression:
-    """
-    Train a Logistic Regression model with GridSearchCV.
-    """
+def train_logistic_regression(
+    x_train: pd.DataFrame, 
+    y_train: pd.Series, 
+    random_state: int = 42
+) -> LogisticRegression:
+    """Train Logistic Regression with GridSearch"""
     param_grid = {
         "C": [0.1, 1.0, 10.0],
         "penalty": ["l1", "l2"],
         "solver": ["liblinear"],
         "max_iter": [100, 200, 300]
     }
-    
-    lr_model = LogisticRegression(random_state=random_state)
-    grid_search = GridSearchCV(lr_model, param_grid, cv=5, n_jobs=-1, verbose=1)
-    
-    print("\nTraining Logistic Regression with GridSearch...")
+    model = LogisticRegression(random_state=random_state)
+    grid_search = GridSearchCV(model, param_grid, cv=5, n_jobs=-1, verbose=1)
     grid_search.fit(x_train, y_train)
-    
-    print("\nBest Parameters:", grid_search.best_params_)
-    print("Best CV Score:", grid_search.best_score_)
-    
+    print(f"Best Logistic Params: {grid_search.best_params_}")
     return grid_search.best_estimator_
 
-def evaluate_model(model, x_test: pd.DataFrame, y_test: pd.Series) -> Tuple[float, dict]:
-    """
-    Evaluate model performance.
-    """
+def train_sgd_classifier(
+    x_train: pd.DataFrame,
+    y_train: pd.Series,
+    random_state: int = 42
+) -> SGDClassifier:
+    """Train SGD Classifier with GridSearch"""
+    param_grid = {
+        "alpha": [0.0001, 0.001, 0.01],
+        "penalty": ["l1", "l2", "elasticnet"],
+        "learning_rate": ["constant", "optimal", "invscaling"],
+        "max_iter": [1000, 2000]
+    }
+    model = SGDClassifier(random_state=random_state, early_stopping=True)
+    grid_search = GridSearchCV(model, param_grid, cv=5, n_jobs=-1, verbose=1)
+    grid_search.fit(x_train, y_train)
+    print(f"Best SGD Params: {grid_search.best_params_}")
+    return grid_search.best_estimator_
+
+def evaluate_model(
+    model: Union[LogisticRegression, SGDClassifier],
+    x_test: pd.DataFrame,
+    y_test: pd.Series
+) -> Tuple[float, dict]:
+    """Evaluate model performance"""
     y_pred = model.predict(x_test)
     accuracy = accuracy_score(y_test, y_pred)
     report = classification_report(y_test, y_pred, output_dict=True)
-    
-    print("\nLogistic Regression Results:")
-    print(f"Accuracy: {accuracy * 100:.2f}%")
+    print(f"\nAccuracy: {accuracy * 100:.2f}%")
     print(classification_report(y_test, y_pred))
-    
     return accuracy, report

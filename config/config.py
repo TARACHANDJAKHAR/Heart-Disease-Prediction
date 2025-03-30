@@ -1,5 +1,5 @@
 """
-Configuration settings for the project.
+Configuration for Logistic Regression and SGD
 """
 
 import os
@@ -16,24 +16,31 @@ DATASETS = [
     "processed.va.data"
 ]
 
-# Column names for the dataset
+# Column names
 COLUMN_NAMES = [
     "age", "sex", "cp", "trestbps", "chol", "fbs", "restecg", 
     "thalach", "exang", "oldpeak", "slope", "ca", "thal", "target"
 ]
 
-# Model parameters (Updated for Logistic Regression)
+# Model parameters
 RANDOM_STATE = 42
 TEST_SIZE = 0.2
-
-# Model directory and filename
 MODEL_DIR = "models"
-MODEL_FILENAME = "logistic_regression_model.pkl"
 
-# Logistic Regression Hyperparameters
+# Logistic Regression Config
+LOGISTIC_FILENAME = "logistic_model.pkl"
 LOGISTIC_PARAMS = {
-    "C": [0.1, 1.0, 10.0],       # Inverse regularization strength
-    "penalty": ["l1", "l2"],      # Regularization type
-    "solver": ["liblinear"],      # Solver for small datasets
-    "max_iter": [100, 200, 300]   # Maximum iterations
+    "C": [0.1, 1.0, 10.0],
+    "penalty": ["l1", "l2"],
+    "solver": ["liblinear"],
+    "max_iter": [100, 200, 300]
+}
+
+# SGD Config
+SGD_FILENAME = "sgd_model.pkl"
+SGD_PARAMS = {
+    "alpha": [0.0001, 0.001, 0.01],
+    "penalty": ["l1", "l2", "elasticnet"],
+    "learning_rate": ["constant", "optimal", "invscaling"],
+    "max_iter": [1000, 2000]
 }
