@@ -1,5 +1,5 @@
 """
-Configuration settings for the project.
+Configuration for Logistic Regression and SGD
 """
 
 import os
@@ -18,7 +18,7 @@ DATASETS = [
     "processed.new.data"
 ]
 
-# Column names for the dataset
+# Column names
 COLUMN_NAMES = [
     "age", "sex", "cp", "trestbps", "chol", "fbs", "restecg", 
     "thalach", "exang", "oldpeak", "slope", "ca", "thal", "target"
@@ -34,8 +34,22 @@ IMAGE_PREPROCESSING = {
 # Model parameters
 RANDOM_STATE = 42
 TEST_SIZE = 0.2
-
-# Model directory and filename
 MODEL_DIR = "models"
-MODEL_FILENAME = "heart_disease_model.pkl" 
-KNNMODEL_FILENAME=""
+
+# Logistic Regression Config
+LOGISTIC_FILENAME = "logistic_model.pkl"
+LOGISTIC_PARAMS = {
+    "C": [0.1, 1.0, 10.0],
+    "penalty": ["l1", "l2"],
+    "solver": ["liblinear"],
+    "max_iter": [100, 200, 300]
+}
+
+# SGD Config
+SGD_FILENAME = "sgd_model.pkl"
+SGD_PARAMS = {
+    "alpha": [0.0001, 0.001, 0.01],
+    "penalty": ["l1", "l2", "elasticnet"],
+    "learning_rate": ["constant", "optimal", "invscaling"],
+    "max_iter": [1000, 2000]
+}

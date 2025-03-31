@@ -29,32 +29,44 @@ Vedang Dubey
 Parth Parmar
 
 Date: 2025-03-23
+Main Pipeline
 """
 
 import os
 import sys
-
-# Add the project root directory to the Python path
+import argparse
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.data_processing import load_and_combine_datasets, clean_data, split_data
-from src.model import train_model, evaluate_model
+from src.data_processing import (
+    load_and_combine_datasets,
+    clean_data,
+    split_data_logistic,
+    split_data_sgd
+)
+from src.model import (
+    train_logistic_regression,
+    train_sgd_classifier,
+    evaluate_model
+)
 from src.utils import save_model
 from config.config import (
     DATA_DIR, DATASETS, COLUMN_NAMES,
     RANDOM_STATE, TEST_SIZE,
     MODEL_DIR, MODEL_FILENAME,
-    IMAGE_DATA_DIR
+    IMAGE_DATA_DIR,
+    RANDOM_STATE, TEST_SIZE, MODEL_DIR,
+    LOGISTIC_FILENAME, SGD_FILENAME
 )
 from model import train_svm_model, train_knn_model
 
 def main():
-    """Main execution function for the heart disease prediction model training pipeline."""
-    print("Starting Heart Disease Prediction Model Training Pipeline")
-    print("=" * 50)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model", type=str, required=True,
+                       choices=["logistic", "sgd"])
+    args = parser.parse_args()
 
-    # Load and combine datasets
-    print("\nLoading and combining datasets...")
+    # Load and clean data
+    print("Loading data...")
     df = load_and_combine_datasets(DATA_DIR, DATASETS, COLUMN_NAMES)
     
     # Clean the data and process images if available
@@ -85,6 +97,21 @@ def main():
     
     print("\nPipeline completed successfully!")
     print("=" * 50)
+    df = clean_data(df)
+
+    # Model-specific processing
+    if args.model == "logistic":
+        x_train, x_test, y_train, y_test = split_data_logistic(df, TEST_SIZE, RANDOM_STATE)
+        model = train_logistic_regression(x_train, y_train, RANDOM_STATE)
+        filename = LOGISTIC_FILENAME
+    else:  # sgd
+        (x_train, x_test, y_train, y_test), scaler = split_data_sgd(df, TEST_SIZE, RANDOM_STATE)
+        model = train_sgd_classifier(x_train, y_train, RANDOM_STATE)
+        filename = SGD_FILENAME
+
+    # Evaluate and save
+    evaluate_model(model, x_test, y_test)
+    save_model(model, filename, MODEL_DIR)
 
 if __name__ == "__main__":
     main()
