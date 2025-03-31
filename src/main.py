@@ -5,9 +5,9 @@ This script implements a machine learning pipeline that:
 - Loads and combines multiple datasets
 - Processes medical report images
 - Preprocesses the data
-- Trains a Random Forest classifier
-- Evaluates model performance
-- Saves the trained model
+- Trains and compares multiple ML models
+- Finds the best performing model
+- Generates comprehensive evaluation reports
 
 Dataset Source:
 UCI Heart Disease dataset combining data from:
@@ -32,103 +32,105 @@ Date: 2025-03-23
 Main Pipeline
 Date: 2025-03-26
 """
-
+import pandas as pd
 import os
 import sys
 import argparse
+import time
+from typing import Dict, Any
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.data_processing import (
     load_and_combine_datasets,
     clean_data,
-    split_data_logistic,
-    split_data_sgd
+    split_data,
+    perform_eda
 )
 from src.model import (
-    train_logistic_regression,
-    train_sgd_classifier,
-    evaluate_model
+    train_model,
+    compare_models
 )
-from src.data_processing import load_and_combine_datasets, clean_data, split_data
-from src.model import train_model, evaluate_model, train_decision_tree, evaluate_decision_tree
-from src.utils import save_model
 from config.config import (
     DATA_DIR, DATASETS, COLUMN_NAMES,
-    RANDOM_STATE, TEST_SIZE,
-    MODEL_DIR, MODEL_FILENAME,
-    IMAGE_DATA_DIR,
     RANDOM_STATE, TEST_SIZE, MODEL_DIR,
-    LOGISTIC_FILENAME, SGD_FILENAME,
-    MODEL_DIR, MODEL_FILENAME,MODEL_FILENAME_DT,
-    IMAGE_DATA_DIR
+    IMAGE_DATA_DIR, EDA_DIR
 )
-from model import train_svm_model, train_knn_model
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--model", type=str, required=True,
-                       choices=["logistic", "sgd"])
+    parser = argparse.ArgumentParser(description="Heart Disease Prediction Model Training Pipeline")
+    parser.add_argument(
+        "--model",
+        type=str,
+        required=True,
+        choices=["random_forest", "svm", "knn", "logistic", "sgd", "decision_tree", "all", "compare"],
+        help="Model type to train or 'compare' to find best model"
+    )
+    parser.add_argument(
+        "--eda",
+        action="store_true",
+        help="Perform Exploratory Data Analysis"
+    )
     args = parser.parse_args()
 
-    # Load and clean data
-    print("Loading data...")
-    df = load_and_combine_datasets(DATA_DIR, DATASETS, COLUMN_NAMES)
-    
-    # Clean the data and process images if available
-    print("\nCleaning and preprocessing the data...")
-    df = clean_data(df, image_dir=IMAGE_DATA_DIR)
-    
-    # Split the data
-    print("\nSplitting data into training and test sets...")
-    x_train, x_test, y_train, y_test = split_data(df, test_size=TEST_SIZE, random_state=RANDOM_STATE)
-    
-    # Train the model
-    # print("\nTraining Random Forest model...")
-    # rf_model = train_model(x_train, y_train, random_state=RANDOM_STATE)
-    # accuracy, report = evaluate_model(rf_model, x_test, y_test)
-
-    # To use SVM:
-    print("\nTraining SVM model...")
-    svm_model = train_svm_model(x_train, y_train)
-    svm_accuracy, svm_report = evaluate_model(svm_model, x_test, y_test)
-
-    # To use KNN:
-    # print("\nTraining KNN model...")
-    # knn_model = train_knn_model(x_train, y_train)
-    # knn_accuracy, knn_report = evaluate_model(knn_model, x_test, y_test)
-    
-    # Save the model
-    save_model(svm_model, "svm"+MODEL_FILENAME, model_dir=MODEL_DIR)
-    save_model(rf_model, MODEL_FILENAME, model_dir=MODEL_DIR)
-
-    # Train Decision Tree model
-    print("\nTraining Decision Tree model...")
-    dt_model = train_decision_tree(x_train, y_train, random_state=RANDOM_STATE)
-    
-    # Evaluate Decision Tree model
-    dt_accuracy, dt_report = evaluate_decision_tree(dt_model, x_test, y_test)
-
-    #save desicion tree
-    save_model(dt_model, MODEL_FILENAME_DT, model_dir=MODEL_DIR)
-    
-    
-    print("\nPipeline completed successfully!")
-    print("=" * 50)
-    df = clean_data(df)
-
-    # Model-specific processing
-    if args.model == "logistic":
-        x_train, x_test, y_train, y_test = split_data_logistic(df, TEST_SIZE, RANDOM_STATE)
-        model = train_logistic_regression(x_train, y_train, RANDOM_STATE)
-        filename = LOGISTIC_FILENAME
-    else:  # sgd
-        (x_train, x_test, y_train, y_test), scaler = split_data_sgd(df, TEST_SIZE, RANDOM_STATE)
-        model = train_sgd_classifier(x_train, y_train, RANDOM_STATE)
-        filename = SGD_FILENAME
-
-    # Evaluate and save
-    evaluate_model(model, x_test, y_test)
-    save_model(model, filename, MODEL_DIR)
+    try:
+        # Load and clean data
+        print("\nLoading data...")
+        df = load_and_combine_datasets(DATA_DIR, DATASETS, COLUMN_NAMES)
+        
+        # Clean the data and process images if available
+        print("\nCleaning and preprocessing the data...")
+        df = clean_data(df, image_dir=IMAGE_DATA_DIR)
+        
+        # Perform EDA if requested
+        if args.eda:
+            print("\nPerforming Exploratory Data Analysis...")
+            perform_eda(df)
+        
+        # Split the data
+        print("\nSplitting data into training and test sets...")
+        x_train, x_test, y_train, y_test = split_data(df, test_size=TEST_SIZE, random_state=RANDOM_STATE)
+        
+        if args.model == "compare":
+            # Compare all models and find the best one
+            print("\nStarting model comparison to find the best model...")
+            results = compare_models(x_train, y_train, x_test, y_test, RANDOM_STATE)
+            
+            # Print detailed comparison results
+            print("\nDetailed Model Comparison Results:")
+            print("=" * 50)
+            for model_name, model_results in results["all_results"].items():
+                print(f"\n{model_name.upper()}:")
+                print(f"Accuracy: {model_results['accuracy']:.4f}")
+                print(f"F1 Score: {model_results['f1_score']:.4f}")
+                print(f"Training Time: {model_results['training_time']:.2f}s")
+                print("-" * 30)
+            
+            print("\nBest Model Selected:")
+            print(f"Model Type: {results['best_model_name']}")
+            print(f"F1 Score: {results['best_score']:.4f}")
+            print(f"Accuracy: {results['all_results'][results['best_model_name']]['accuracy']:.4f}")
+            print(f"Training Time: {results['all_results'][results['best_model_name']]['training_time']:.2f}s")
+        else:
+            # Train specific model(s)
+            if args.model == "all":
+                models = ["random_forest", "svm", "knn", "logistic", "sgd", "decision_tree"]
+                for model_name in models:
+                    print(f"\nTraining {model_name}...")
+                    model = train_model(model_name, x_train, y_train, x_test, y_test, RANDOM_STATE)
+                    print(f"\nCompleted training {model_name}")
+            else:
+                model = train_model(args.model, x_train, y_train, x_test, y_test, RANDOM_STATE)
+                print(f"\nCompleted training {args.model}")
+        
+        print("\nPipeline completed successfully!")
+        print("=" * 50)
+        
+    except Exception as e:
+        print(f"\nError in pipeline execution: {str(e)}")
+        print("Stack trace:")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

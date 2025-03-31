@@ -4,7 +4,7 @@ Data Processing Module
 
 import pandas as pd
 import numpy as np
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 import os
@@ -26,11 +26,39 @@ def load_and_combine_datasets(
     Returns:
         pd.DataFrame: Combined dataset containing all records
     """
-    df_list = [
-        pd.read_csv(os.path.join(data_dir, file), names=column_names, header=None)
-        for file in datasets
-    ]
-    return pd.concat(df_list, ignore_index=True)
+    df_list = []
+    
+    for file in datasets:
+        file_path = os.path.join(data_dir, file)
+        if not os.path.exists(file_path):
+            print(f"Warning: File {file} not found in {data_dir}")
+            continue
+            
+        try:
+            # Read the files and handle missing values
+            df = pd.read_csv(
+                file_path,
+                names=column_names,
+                header=None,
+                sep=',',
+                na_values=['?']
+            )
+            print(f"Successfully loaded {file} with {len(df)} rows")
+            df_list.append(df)
+        except Exception as e:
+            print(f"Error loading {file}: {str(e)}")
+            continue
+    
+    if not df_list:
+        raise ValueError("No datasets were successfully loaded")
+        
+    combined_df = pd.concat(df_list, ignore_index=True)
+    print(f"\nCombined dataset shape: {combined_df.shape}")
+    print("\nDataset Info:")
+    print(combined_df.info())
+    print("\nMissing Values:")
+    print(combined_df.isnull().sum())
+    return combined_df
 
 def process_image_data(image_dir: str, patient_ids: List[str]) -> Dict[str, Dict[str, float]]:
     """
@@ -58,7 +86,7 @@ def process_image_data(image_dir: str, patient_ids: List[str]) -> Dict[str, Dict
     
     return image_data
 
-def clean_data(df: pd.DataFrame, image_dir: str = None) -> pd.DataFrame:
+def clean_data(df: pd.DataFrame, image_dir: Optional[str] = None) -> pd.DataFrame:
     """
     Clean and preprocess the dataset, incorporating image data if available.
 
@@ -69,28 +97,13 @@ def clean_data(df: pd.DataFrame, image_dir: str = None) -> pd.DataFrame:
     Returns:
         pd.DataFrame: Cleaned DataFrame ready for model training
     """
-    # Display initial data types for verification
-    print("\nInitial DataFrame Data Types:")
-    print(df.dtypes)
-
-    # Replace missing values
-    df.replace("?", np.nan, inplace=True)
-
+    
     # Define columns that should be numeric
     numeric_columns = [
-        "age",
-        "cp",
-        "trestbps",
-        "chol",
-        "restecg",
-        "thalach",
-        "exang",
-        "oldpeak",
-        "slope",
-        "ca",
-        "thal",
+        "age", "cp", "trestbps", "chol", "restecg",
+        "thalach", "exang", "oldpeak", "slope", "ca", "thal"
     ]
-
+    
     # Convert numeric columns with error handling
     for col in numeric_columns:
         try:
@@ -115,26 +128,24 @@ def clean_data(df: pd.DataFrame, image_dir: str = None) -> pd.DataFrame:
                     if key in df.columns:
                         df.loc[patient_id, key] = value
     
-    # Display DataFrame info after conversion
-    print("\nDataFrame Info After Conversion:")
-    print(df.info())
-
     # Remove rows with missing values
     missing_before = df.isnull().sum()
     df.dropna(inplace=True)
     missing_after = df.isnull().sum()
-
+    
     print("\nMissing Values Before and After Cleaning:")
     print("Before:")
     print(missing_before[missing_before > 0])
     print("\nAfter:")
     print(missing_after[missing_after > 0])
-
+    
     # Binarize target variable
     df["target"] = df["target"].apply(lambda x: 1 if x > 0 else 0)
-
+    
+    print("\nFinal DataFrame Info:")
+    print(df.info())
+    
     return df
-
 
 def split_data(
     df: pd.DataFrame, test_size: float = 0.2, random_state: int = 42
@@ -151,73 +162,54 @@ def split_data(
         Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
             x_train, x_test, y_train, y_test
     """
-    x = df.drop(columns=["target"])  # leaving only input features (Dataframe)
-    y = df["target"]  # Series
-    return train_test_split(
+
+    x = df.drop(columns=["target"])
+    y = df["target"]
+    
+    # Print class distribution
+    print("\nClass Distribution:")
+    print(y.value_counts(normalize=True))
+    
+    x_train, x_test, y_train, y_test = train_test_split(
         x, y, test_size=test_size, random_state=random_state, stratify=y
     )
-    # stratify=y argument ensures that the proportion of each class in the "target" column remains consistent between the training and testing datasets.(in our case, heart disease 0 or 1)
-def load_and_combine_datasets(data_dir: str, datasets: List[str], column_names: List[str]) -> pd.DataFrame:
-    """Load and combine datasets"""
-    df_list = [pd.read_csv(os.path.join(data_dir, file), names=column_names, header=None) 
-               for file in datasets]
-    return pd.concat(df_list, ignore_index=True)
-
-def clean_data(df: pd.DataFrame) -> pd.DataFrame:
-    """Clean and preprocess data"""
-    df.replace('?', np.nan, inplace=True)
-    numeric_columns = ["age", "cp", "trestbps", "chol", "restecg", 
-                      "thalach", "exang", "oldpeak", "slope", "ca", "thal"]
-    for col in numeric_columns:
-        df[col] = pd.to_numeric(df[col], errors='coerce')
-    df.dropna(inplace=True)
-    df["target"] = df["target"].apply(lambda x: 1 if x > 0 else 0)
-    return df
-
-def split_data_logistic(df: pd.DataFrame, test_size: float, random_state: int):
-    """Split data for Logistic Regression (no scaling)"""
-    x = df.drop(columns=["target"])
-    y = df["target"]
-    return train_test_split(x, y, test_size=test_size, random_state=random_state, stratify=y)
-
-def split_data_sgd(df: pd.DataFrame, test_size: float, random_state: int):
-    """Split data for SGD (with scaling)"""
-    x = df.drop(columns=["target"])
-    y = df["target"]
-    scaler = StandardScaler()
-    x_scaled = scaler.fit_transform(x)
-    x_train, x_test, y_train, y_test = train_test_split(
-        x_scaled, y, test_size=test_size, random_state=random_state, stratify=y
-    )
-    return (x_train, x_test, y_train, y_test), scaler
-
+    
+    print("\nSplit Results:")
+    print(f"Training set shape: {x_train.shape}")
+    print(f"Test set shape: {x_test.shape}")
+    
+    return x_train, x_test, y_train, y_test
 
 def perform_eda(df: pd.DataFrame, target_col: str = "target", save_dir: str = "EDA_Reports"):
     """
     Perform automated EDA with image outputs.
     Creates directory if it doesn't exist.
     """
+    print("\nPerforming Exploratory Data Analysis...")
+    
     # Create directory if missing
     os.makedirs(save_dir, exist_ok=True)
     
-    av = AutoViz_Class()
-    
-    print(f"\nGenerating EDA images in '{save_dir}'...")
-    av.AutoViz(
-        filename="",
-        sep=",",
-        depVar=target_col,
-        dfte=df,
-        header=0,
-        verbose=1,
-        chart_format='png',
-        max_rows_analyzed=15000,
-        max_cols_analyzed=30,
-        save_plot_dir=save_dir
-    )
-    
-    # Verify creation
-    if os.path.exists(save_dir):
-        print(f"Saved {len(os.listdir(save_dir))} EDA images to {save_dir}")
-    else:
-        print("Error: EDA directory not created successfully")
+    try:
+        # Initialize AutoViz
+        AV = AutoViz_Class()
+        
+        # Generate EDA report
+        dft = AV.AutoViz(
+            filename="",
+            sep=",",
+            depVar=target_col,
+            dfte=df,
+            header=0,
+            verbose=0,  # Reduce verbosity
+            lowess=False,
+            chart_format="png",
+            max_rows_analyzed=150000,
+            max_cols_analyzed=30,
+            save_plot_dir=save_dir
+        )
+        
+        print(f"\nEDA reports saved to {save_dir}")
+    except Exception as e:
+        print(f"Error during EDA: {str(e)}")
+        print("Continuing with model training...")

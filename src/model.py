@@ -3,387 +3,449 @@ Model Training and Evaluation
 """
 
 import pandas as pd
-from typing import Tuple
+import time
+import os
+from typing import Tuple, Union, Any, Dict, List
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.model_selection import GridSearchCV, StratifiedKFold
+from sklearn.model_selection import GridSearchCV, StratifiedKFold, RandomizedSearchCV
 from sklearn.metrics import (accuracy_score, classification_report, 
-                            confusion_matrix, ConfusionMatrixDisplay)
-from sklearn.model_selection import GridSearchCV
-from sklearn.model_selection import StratifiedKFold
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, ConfusionMatrixDisplay
+                            confusion_matrix, ConfusionMatrixDisplay,
+                            make_scorer, f1_score, precision_score, recall_score)
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.linear_model import LogisticRegression, SGDClassifier
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
+from sklearn.feature_selection import SelectKBest, f_classif
+from imblearn.over_sampling import SMOTE
+from imblearn.pipeline import Pipeline as ImbPipeline
 import matplotlib.pyplot as plt
+import seaborn as sns
+import joblib
+from tqdm import tqdm
+from scipy.stats import uniform, loguniform
+from config.config import (
+    RF_PARAMS, SVM_PARAMS, KNN_PARAMS,
+    LOGISTIC_PARAMS, SGD_PARAMS, DT_PARAMS,
+    RANDOM_STATE, MODEL_DIR, BEST_MODEL_FILENAME,
+    CV_SPLITS, SCORING_METRICS, COMPARISON_METRICS,
+    BEST_MODEL_SELECTION_METRIC
+)
 
-# Existing Random Forest function remains unchanged
-def train_model(
-    x_train: pd.DataFrame,
-    y_train: pd.Series,
-    n_estimators: int = 100,
-    random_state: int = 42,
-) -> RandomForestClassifier:
-    """
-    Train a Random Forest classifier with hyperparameter tuning.
-    (Existing implementation remains unchanged)
-    """
-    # Existing Random Forest implementation
-    param_grid = {
-        "n_estimators": [50, 100, 200, 500],
-        "max_depth": [3, 5, 10, 20, None],
-        "min_samples_split": [2, 5, 10, 20],
-        "min_samples_leaf": [1, 2, 4, 8],
-        "max_features": ["sqrt", "log2"],
+def create_cv_strategy() -> StratifiedKFold:
+    """Create cross-validation strategy"""
+    return StratifiedKFold(n_splits=CV_SPLITS, shuffle=True, random_state=RANDOM_STATE)
+
+def create_scorers():
+    """Create scorer dictionary with zero_division handling"""
+    return {
+        'accuracy': make_scorer(accuracy_score),
+        'f1_score': make_scorer(f1_score, zero_division=0),
+        'precision': make_scorer(precision_score, zero_division=0),
+        'recall': make_scorer(recall_score, zero_division=0)
     }
 
-    base_model = RandomForestClassifier(random_state=random_state)
-    cv_strategy = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+def train_rf_model(
+    x_train: pd.DataFrame,
+    y_train: pd.Series,
+    random_state: int = RANDOM_STATE,
+) -> RandomForestClassifier:
+    """Train Random Forest classifier with hyperparameter tuning"""
+    print("\nTraining Random Forest model...")
     
-    grid_search = GridSearchCV(
-        estimator=base_model,
-        param_grid=param_grid,
-        cv=cv_strategy,
-        n_jobs=-1,
+    pipe = ImbPipeline([
+        ('scaler', RobustScaler()),
+        ('selector', SelectKBest(f_classif)),
+        ('rf', RandomForestClassifier(random_state=random_state, class_weight='balanced'))
+    ])
+        
+    # Use RandomizedSearchCV for more efficient hyperparameter search
+    search = RandomizedSearchCV(
+        estimator=pipe,
+        param_distributions=RF_PARAMS,
+        cv=create_cv_strategy(),
         verbose=1,
-        scoring="accuracy",
+        scoring=create_scorers(),
+        refit='f1_score',
+        n_jobs=-1,
+        random_state=random_state
     )
 
-    grid_search.fit(x_train, y_train)
+    start_time = time.time()
+    search.fit(x_train, y_train)
+    training_time = time.time() - start_time
+    
     print("\nBest Parameters Found (RF):")
-    print(grid_search.best_params_)
-    print(f"Best Cross-Validation Score (RF): {grid_search.best_score_:.4f}")
+    print(search.best_params_)
+    print(f"Best Cross-Validation Score (RF): {search.best_score_:.4f}")
+    print(f"Training Time: {training_time:.2f}s")
 
-    return grid_search.best_estimator_
-
-# New SVM Model Function
-import time
-import math
-from sklearn.svm import SVC
-from sklearn.model_selection import GridSearchCV, StratifiedKFold
-
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler
-from sklearn.svm import SVC
-from sklearn.model_selection import RandomizedSearchCV, StratifiedKFold
-import math
-import time
-from tqdm import tqdm
-
-from sklearn.base import clone
+    return search.best_estimator_
 
 def train_svm_model(
     x_train: pd.DataFrame,
     y_train: pd.Series,
-    random_state: int = 42
+    random_state: int = RANDOM_STATE
 ) -> SVC:
-    """
-    Final robust SVM training with version-agnostic progress tracking.
-    """
-    # Create pipeline with proper scaling
+    """Train SVM classifier with hyperparameter tuning"""
+    print("\nTraining SVM model...")
+    
+    # Create pipeline with robust preprocessing
     pipe = make_pipeline(
-        StandardScaler(),
-        SVC(probability=True, random_state=random_state)
+        RobustScaler(),  # More robust to outliers
+        SVC(probability=True, random_state=random_state, cache_size=1000, class_weight='balanced')  # Added class_weight
     )
 
-    # Optimized parameter distribution
-    param_dist = {
-        'svc__C': [0.1, 1, 10],
-        'svc__kernel': ['linear', 'rbf'],
-        'svc__gamma': ['scale', 'auto', 0.1],
-        'svc__class_weight': [None, 'balanced']
-    }
-
-    # Configure search
+    # Use RandomizedSearchCV with more iterations
     search = RandomizedSearchCV(
-        pipe,
-        param_dist,
-        n_iter=20,
-        cv=StratifiedKFold(n_splits=5, shuffle=True, random_state=random_state),
-        scoring='accuracy',
+        estimator=pipe,
+        param_distributions=RF_PARAMS,
+        n_iter=50,
+        cv=create_cv_strategy(),
+        verbose=1,
+        scoring=create_scorers(),
+        refit='f1_score',
         n_jobs=-1,
-        random_state=random_state,
-        verbose=0
+        random_state=random_state
     )
-
-    # Initialize progress tracking
+    
     start_time = time.time()
-    total_iterations = 20 * 5  # n_iter * cv folds
-    pbar = tqdm(total=total_iterations, desc="SVM Training")
-
-    # Store original methods
-    original_fit = search.fit
-    original_format = search._format_results
-
-    # Define version-agnostic wrapper
-    def format_wrapper(*args, **kwargs):
-        pbar.update(1)
-        if hasattr(search, 'best_score_'):
-            pbar.set_postfix({"Best Score": f"{search.best_score_:.2f}"})
-        return original_format(*args, **kwargs)
-
-    def wrapped_fit(X, y):
-        search._format_results = format_wrapper
-        try:
-            result = original_fit(X, y)
-        finally:
-            pbar.close()
-        return result
-
-    search.fit = wrapped_fit
-
-    # Execute training
-    try:
-        search.fit(x_train, y_train)
-    except Exception as e:
-        pbar.close()
-        raise RuntimeError(f"SVM training failed: {str(e)}") from e
-
-    print(f"\nBest Parameters (SVM):")
+    search.fit(x_train, y_train)
+    training_time = time.time() - start_time
+    
+    print(f"\nTraining Time: {training_time:.1f}s")
+    print("\nBest Parameters (SVM):")
     print(search.best_params_)
-    print(f"Training Time: {time.time()-start_time:.1f}s")
-    print(f"Validation Accuracy: {search.best_score_:.4f}")
+    print(f"Validation Score: {search.best_score_:.4f}")
 
     return search.best_estimator_
-
-# New KNN Model Function
-from sklearn.preprocessing import RobustScaler
-from sklearn.feature_selection import SelectKBest, mutual_info_classif
-from imblearn.over_sampling import SMOTE
-from imblearn.pipeline import Pipeline as ImbPipeline
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.model_selection import GridSearchCV, StratifiedKFold
-
-from sklearn.preprocessing import RobustScaler
-from sklearn.feature_selection import SelectKBest, f_classif
-from imblearn.pipeline import Pipeline as ImbPipeline
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.model_selection import GridSearchCV, StratifiedKFold
-from sklearn.metrics import balanced_accuracy_score
 
 def train_knn_model(
     x_train: pd.DataFrame,
     y_train: pd.Series,
-    n_jobs: int = -1
+    random_state: int = RANDOM_STATE
 ) -> KNeighborsClassifier:
-    """
-    Optimized KNN classifier training with proper pipeline configuration.
-    Fixes 0-second iteration issue and improves accuracy.
-    """
-    # Corrected pipeline order and components
-    pipeline = ImbPipeline([
-        ('scaler', RobustScaler()),        # Step 1: Scale features
-        ('smote', SMOTE(random_state=42)), # Step 2: Balance classes
-        ('selector', SelectKBest(f_classif)),  # Step 3: Feature selection
-        ('knn', KNeighborsClassifier())    # Step 4: Final classifier
+    """Train KNN classifier with hyperparameter tuning"""
+    print("\nTraining KNN model...")
+    
+    # Create pipeline with feature selection and class weight handling
+    pipe = ImbPipeline([
+        ('scaler', MinMaxScaler()),
+        ('selector', SelectKBest(f_classif)),
+        ('knn', KNeighborsClassifier(weights='distance'))  # Use distance weights
     ])
 
-    # Revised hyperparameter grid
-    param_grid = {
-        'selector__k': [8, 10],            # Reduced feature selection options
-        'knn__n_neighbors': list(range(3, 15, 2)),  # More reasonable neighbor range
-        'knn__weights': ['distance'],      # Focus on distance weighting
-        'knn__p': [1, 2],                  # Manhattan vs Euclidean
-        'knn__leaf_size': [30],            # Single optimized value
-        'knn__metric': ['minkowski']       # Standard metric
-    }
+    # Create scorer dictionary with zero division handling
+    scorers = create_scorers()
 
-    # Validation checks
-    print("Initial feature count:", x_train.shape[1])
-    print("Class distribution:\n", y_train.value_counts())
-
-    # Configure grid search with proper CV
-    grid_search = GridSearchCV(
-        estimator=pipeline,
-        param_grid=param_grid,
-        cv=StratifiedKFold(n_splits=5, shuffle=True, random_state=42),
-        scoring='balanced_accuracy',
-        n_jobs=n_jobs,
-        verbose=2
+    # Use RandomizedSearchCV for more efficient search
+    search = RandomizedSearchCV(
+        estimator=pipe,
+        param_distributions=RF_PARAMS,
+        n_iter=50,
+        cv=create_cv_strategy(),
+        verbose=1,
+        scoring=create_scorers(),
+        refit='f1_score',
+        n_jobs=-1,
+        random_state=random_state
     )
 
-    # Add timing instrumentation
     start_time = time.time()
-    grid_search.fit(x_train, y_train)
-    print(f"\nTotal training time: {time.time() - start_time:.1f} seconds")
-
-    # Best model evaluation
-    best_model = grid_search.best_estimator_
+    search.fit(x_train, y_train)
+    training_time = time.time() - start_time
     
-    # Pipeline validation
-    try:
-        transformed_sample = best_model[:-1].transform(x_train[:1])
-        print(f"\nPost-pipeline feature count: {transformed_sample.shape[1]}")
-    except Exception as e:
-        print("\nPipeline transformation error:", str(e))
-
-    print("\nBest parameters:", grid_search.best_params_)
-    print(f"Validation score: {grid_search.best_score_:.4f}")
+    print(f"\nTraining Time: {training_time:.1f}s")
+    print("\nBest Parameters (KNN):")
+    print(search.best_params_)
+    print(f"Validation Score: {search.best_score_:.4f}")
     
-    return best_model
-def evaluate_model(
-    model, x_test: pd.DataFrame, y_test: pd.Series
-) -> Tuple[float, dict]:
-    """
-    Evaluate model performance.
-    (Existing implementation remains unchanged)
-    """
-    y_pred = model.predict(x_test)
-    accuracy = accuracy_score(y_test, y_pred)
-
-    print("\nModel Performance Metrics:")
-    print(f"Accuracy: {accuracy * 100:.2f}%")
-    print("\nDetailed Classification Report:")
-from sklearn.linear_model import LogisticRegression, SGDClassifier
-from sklearn.model_selection import GridSearchCV
-from sklearn.metrics import accuracy_score, classification_report
-import pandas as pd
-from typing import Tuple, Union
+    return search.best_estimator_
 
 def train_logistic_regression(
     x_train: pd.DataFrame, 
     y_train: pd.Series, 
-    random_state: int = 42
+    random_state: int = RANDOM_STATE
 ) -> LogisticRegression:
-    """Train Logistic Regression with GridSearch"""
-    param_grid = {
-        "C": [0.1, 1.0, 10.0],
-        "penalty": ["l1", "l2"],
-        "solver": ["liblinear"],
-        "max_iter": [100, 200, 300]
-    }
-    model = LogisticRegression(random_state=random_state)
-    grid_search = GridSearchCV(model, param_grid, cv=5, n_jobs=-1, verbose=1)
-    grid_search.fit(x_train, y_train)
-    print(f"Best Logistic Params: {grid_search.best_params_}")
-    return grid_search.best_estimator_
+    """Train Logistic Regression with hyperparameter tuning"""
+    print("\nTraining Logistic Regression model...")
+    
+    # Create pipeline with robust preprocessing
+    pipe = make_pipeline(
+        RobustScaler(),
+        LogisticRegression(random_state=random_state, class_weight='balanced')
+    )
+    
+    # Create scorer dictionary with zero division handling
+    scorers = create_scorers()
+    
+    # Use RandomizedSearchCV with more iterations
+    search = RandomizedSearchCV(
+        estimator=pipe,
+        param_distributions=RF_PARAMS,
+        n_iter=50,
+        cv=create_cv_strategy(),
+        verbose=1,
+        scoring=create_scorers(),
+        refit='f1_score',
+        n_jobs=-1,
+        random_state=random_state
+    )
+
+    start_time = time.time()
+    search.fit(x_train, y_train)
+    training_time = time.time() - start_time
+    
+    print(f"\nTraining Time: {training_time:.1f}s")
+    print("\nBest Parameters Found (Logistic):")
+    print(search.best_params_)
+    print(f"Best Cross-Validation Score (Logistic): {search.best_score_:.4f}")
+
+    return search.best_estimator_
 
 def train_sgd_classifier(
     x_train: pd.DataFrame,
     y_train: pd.Series,
-    random_state: int = 42
+    random_state: int = RANDOM_STATE
 ) -> SGDClassifier:
-    """Train SGD Classifier with GridSearch"""
-    param_grid = {
-        "alpha": [0.0001, 0.001, 0.01],
-        "penalty": ["l1", "l2", "elasticnet"],
-        "learning_rate": ["constant", "optimal", "invscaling"],
-        "max_iter": [1000, 2000]
-    }
-    model = SGDClassifier(random_state=random_state, early_stopping=True)
-    grid_search = GridSearchCV(model, param_grid, cv=5, n_jobs=-1, verbose=1)
-    grid_search.fit(x_train, y_train)
-    print(f"Best SGD Params: {grid_search.best_params_}")
-    return grid_search.best_estimator_
-
-def evaluate_model(
-    model: Union[LogisticRegression, SGDClassifier],
-    x_test: pd.DataFrame,
-    y_test: pd.Series
-) -> Tuple[float, dict]:
-    """Evaluate model performance"""
-    y_pred = model.predict(x_test)
-    accuracy = accuracy_score(y_test, y_pred)
-    report = classification_report(y_test, y_pred, output_dict=True)
-    print(f"\nAccuracy: {accuracy * 100:.2f}%")
-    print(classification_report(y_test, y_pred))
+    """Train SGD classifier with hyperparameter tuning"""
+    print("\nTraining SGD model...")
     
-    cm = confusion_matrix(y_test, y_pred)
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm)
-    disp.plot(cmap='Blues')
-    plt.show()
+    # Create pipeline with robust preprocessing
+    pipe = make_pipeline(
+        RobustScaler(),
+        SGDClassifier(random_state=random_state, class_weight='balanced')
+    )
     
-    return accuracy, report
-    return accuracy, report
+    # Create scorer dictionary with zero division handling
+    scorers = create_scorers()
+    
+    # Use RandomizedSearchCV for more efficient search
+    search = RandomizedSearchCV(
+        estimator=pipe,
+        param_distributions=RF_PARAMS,
+        n_iter=50,
+        cv=create_cv_strategy(),
+        verbose=1,
+        scoring=create_scorers(),
+        refit='f1_score',
+        n_jobs=-1,
+        random_state=random_state
+    )
 
-"""
-Decision Tree Training and Evaluation Module for Heart Disease Prediction
+    start_time = time.time()
+    search.fit(x_train, y_train)
+    training_time = time.time() - start_time
+    
+    print(f"\nTraining Time: {training_time:.1f}s")
+    print("\nBest Parameters Found (SGD):")
+    print(search.best_params_)
+    print(f"Best Cross-Validation Score (SGD): {search.best_score_:.4f}")
 
-This module handles model training, hyperparameter tuning, and evaluation
-for the heart disease prediction model using a Decision Tree classifier.
-"""
+    return search.best_estimator_
 
 def train_decision_tree(
     x_train: pd.DataFrame,
     y_train: pd.Series,
-    random_state: int = 42,
+    random_state: int = RANDOM_STATE
 ) -> DecisionTreeClassifier:
-    """
-    Train a Decision Tree classifier on the provided data using Grid Search CV for hyperparameter tuning.
-
-    Args:
-        x_train (pd.DataFrame): Training features
-        y_train (pd.Series): Training labels
-        random_state (int): Random state for reproducibility
-
-    Returns:
-        DecisionTreeClassifier: Trained Decision Tree model with best parameters
-    """
-    # Define parameter grid for Grid Search
-    param_grid = {
-        "criterion": ["gini", "entropy"],
-        "max_depth": [3, 5, 10, 20, None], 
-        "min_samples_split": [2, 5, 10, 20], 
-        "min_samples_leaf": [1, 2, 4, 8], 
-    }
-
-    # Initialize base model
-    base_model = DecisionTreeClassifier(random_state=random_state)
+    """Train Decision Tree with hyperparameter tuning"""
+    print("\nTraining Decision Tree model...")
     
-    # Ensures each fold has an equal proportion of classes, improving accuracy.
-    cv_strategy = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-    
-    # Initialize Grid Search
-    grid_search = GridSearchCV(
-        estimator=base_model,
-        param_grid=param_grid,
-        cv=cv_strategy,
-        n_jobs=-1,
-        verbose=1,
-        scoring="accuracy",
+    # Create pipeline with robust preprocessing
+    pipe = make_pipeline(
+        RobustScaler(),
+        DecisionTreeClassifier(random_state=random_state, class_weight='balanced')
     )
 
-    # Perform Grid Search
-    print("\nPerforming Grid Search for hyperparameter tuning...")
-    grid_search.fit(x_train, y_train)
+    # Create scorer dictionary with zero division handling
+    scorers = create_scorers()
+    
+    # Use RandomizedSearchCV with more iterations
+    search = RandomizedSearchCV(
+        estimator=pipe,
+        param_distributions=RF_PARAMS,
+        n_iter=50,
+        cv=create_cv_strategy(),
+        verbose=1,
+        scoring=create_scorers(),
+        refit='f1_score',
+        n_jobs=-1,
+        random_state=random_state
+    )
 
-    # Print best parameters
-    print("\nBest Parameters Found:")
-    print(grid_search.best_params_)
-    print(f"Best Cross-Validation Score: {grid_search.best_score_:.4f}")
+    start_time = time.time()
+    search.fit(x_train, y_train)
+    training_time = time.time() - start_time
+    
+    print(f"\nTraining Time: {training_time:.1f}s")
+    print("\nBest Parameters Found (Decision Tree):")
+    print(search.best_params_)
+    print(f"Best Cross-Validation Score (Decision Tree): {search.best_score_:.4f}")
 
-    return grid_search.best_estimator_
+    return search.best_estimator_
 
-def evaluate_decision_tree(
-    model: DecisionTreeClassifier, x_test: pd.DataFrame, y_test: pd.Series
+def train_model(
+    model_name: str,
+    x_train: pd.DataFrame,
+    y_train: pd.Series,
+    x_test: pd.DataFrame,
+    y_test: pd.Series,
+    random_state: int
+) -> Any:
+    """Train a single model and save it"""
+    from src.utils import save_model
+    
+    # Map model names to training functions
+    model_functions = {
+        "random_forest": train_rf_model,
+        "svm": train_svm_model,
+        "knn": train_knn_model,
+        "logistic": train_logistic_regression,
+        "sgd": train_sgd_classifier,
+        "decision_tree": train_decision_tree
+    }
+    
+    # Train the model
+    train_func = model_functions[model_name]
+    model = train_func(x_train, y_train, random_state)
+    
+    # Evaluate the model
+    accuracy, report = evaluate_model(model, x_test, y_test)
+    
+    # Save the model
+    model_filename = f"{model_name}_model.joblib"
+    save_model(model, model_filename, MODEL_DIR)
+    
+    print(f"\nModel saved as: {model_filename}")
+    print(f"Accuracy: {accuracy:.4f}")
+    print(f"F1 Score: {report['1']['f1-score']:.4f}")
+    
+    return model
+
+def evaluate_model(
+    model: Union[RandomForestClassifier, SVC, KNeighborsClassifier, 
+                LogisticRegression, SGDClassifier, DecisionTreeClassifier],
+    x_test: pd.DataFrame,
+    y_test: pd.Series
 ) -> Tuple[float, dict]:
-    """
-    Evaluate the Decision Tree model's performance using various metrics.
-
-    Args:
-        model (DecisionTreeClassifier): Trained Decision Tree model to evaluate
-        x_test (pd.DataFrame): Test features
-        y_test (pd.Series): Test labels
-
-    Returns:
-        Tuple[float, dict]: Accuracy score and classification report as a dictionary
-    """
+    """Evaluate model performance with comprehensive metrics"""
     y_pred = model.predict(x_test)
+    y_pred_proba = model.predict_proba(x_test)[:, 1] if hasattr(model, 'predict_proba') else None
+    
+    # Calculate metrics
     accuracy = accuracy_score(y_test, y_pred)
-
-    print("\nDecision Tree Model Performance Metrics:")
-    print(f"Accuracy: {accuracy * 100:.2f}%")
-    print("\nDetailed Classification Report:")
+    f1 = f1_score(y_test, y_pred)
+    precision = precision_score(y_test, y_pred)
+    recall = recall_score(y_test, y_pred)
     report = classification_report(y_test, y_pred, output_dict=True)
+
+    print("\nModel Performance Metrics:")
+    print(f"Accuracy: {accuracy * 100:.2f}%")
+    print(f"F1 Score: {f1:.4f}")
+    print(f"Precision: {precision:.4f}")
+    print(f"Recall: {recall:.4f}")
+    print("\nDetailed Classification Report:")
     print(classification_report(y_test, y_pred))
-    
-    # Compute and display confusion matrix
+
+    # Plot confusion matrix with seaborn
+    plt.figure(figsize=(8, 6))
     cm = confusion_matrix(y_test, y_pred)
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm)
-    disp.plot(cmap='Blues')
-    
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
+    plt.title("Confusion Matrix")
+    plt.ylabel("True Label")
+    plt.xlabel("Predicted Label")
     plt.show()
-    
+
     return accuracy, report
 
-
-
+def compare_models(
+    x_train: pd.DataFrame,
+    y_train: pd.Series,
+    x_test: pd.DataFrame,
+    y_test: pd.Series,
+    random_state: int = RANDOM_STATE
+) -> Dict[str, Any]:
+    """
+    Compare all models and find the best performing one.
+    
+    Args:
+        x_train: Training features
+        y_train: Training labels
+        x_test: Test features
+        y_test: Test labels
+        random_state: Random state for reproducibility
+        
+    Returns:
+        Dictionary containing best model info and comparison results
+    """
+    models = {
+        "random_forest": train_rf_model,
+        "svm": train_svm_model,
+        "knn": train_knn_model,
+        "logistic": train_logistic_regression,
+        "sgd": train_sgd_classifier,
+        "decision_tree": train_decision_tree
+    }
+    
+    results = {}
+    best_model = None
+    best_score = 0
+    best_model_name = None
+    
+    print("\nStarting model comparison...")
+    print("=" * 50)
+    
+    for model_name, train_func in tqdm(models.items(), desc="Training Models"):
+        try:
+            # Train model
+            start_time = time.time()
+            model = train_func(x_train, y_train, random_state)
+            training_time = time.time() - start_time
+            
+            # Evaluate model
+            accuracy, report = evaluate_model(model, x_test, y_test)
+            f1 = f1_score(y_test, model.predict(x_test))
+            
+            results[model_name] = {
+                "model": model,
+                "accuracy": accuracy,
+                "f1_score": f1,
+                "training_time": training_time,
+                "report": report
+            }
+            
+            # Update best model if current model performs better
+            if f1 > best_score:
+                best_score = f1
+                best_model = model
+                best_model_name = model_name
+            
+            print(f"\n{model_name.upper()} Results:")
+            print(f"Accuracy: {accuracy:.4f}")
+            print(f"F1 Score: {f1:.4f}")
+            print(f"Training Time: {training_time:.2f}s")
+            print("-" * 30)
+            
+        except Exception as e:
+            print(f"Error training {model_name}: {str(e)}")
+            continue
+    
+    # Save best model
+    if best_model is not None:
+        best_model_path = os.path.join(MODEL_DIR, BEST_MODEL_FILENAME)
+        joblib.dump(best_model, best_model_path)
+        print("\nBest Model Summary:")
+        print(f"Model Type: {best_model_name}")
+        print(f"F1 Score: {best_score:.4f}")
+        print(f"Accuracy: {results[best_model_name]['accuracy']:.4f}")
+        print(f"Training Time: {results[best_model_name]['training_time']:.2f}s")
+        print(f"Saved to: {best_model_path}")
+    
+    return {
+        "best_model": best_model,
+        "best_model_name": best_model_name,
+        "best_score": best_score,
+        "all_results": results
+    }
