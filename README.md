@@ -16,7 +16,6 @@ heart-disease-prediction/
 │   ├── raw/               # Original data files
 │   └── processed/         # Processed data files
 ├── models/                 # Saved models
-├── notebooks/             # Jupyter notebooks
 ├── config/                # Configuration files
 ├── requirements.txt       # Project dependencies
 └── README.md             # Project documentation
@@ -37,7 +36,7 @@ heart-disease-prediction/
 
 3. Run the training script:
    ```bash
-   python src/train_model.py
+   python src/main.py
    ```
 
 ## Usage
