@@ -8,6 +8,7 @@ from typing import List, Tuple, Optional
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 import os
+from autoviz.AutoViz_Class import AutoViz_Class
 from .image_processing import process_medical_image, combine_image_and_tabular_data
 
 
@@ -129,9 +130,6 @@ def clean_data(df: pd.DataFrame, image_dir: str = None) -> pd.DataFrame:
     print("\nAfter:")
     print(missing_after[missing_after > 0])
 
-    duplicate_count = df.duplicated().sum()  # Count the number of duplicated rows
-    print(f"\nNumber of exact duplicate rows: {duplicate_count}")
-    
     # Binarize target variable
     df["target"] = df["target"].apply(lambda x: 1 if x > 0 else 0)
 
@@ -192,3 +190,34 @@ def split_data_sgd(df: pd.DataFrame, test_size: float, random_state: int):
         x_scaled, y, test_size=test_size, random_state=random_state, stratify=y
     )
     return (x_train, x_test, y_train, y_test), scaler
+
+
+def perform_eda(df: pd.DataFrame, target_col: str = "target", save_dir: str = "EDA_Reports"):
+    """
+    Perform automated EDA with image outputs.
+    Creates directory if it doesn't exist.
+    """
+    # Create directory if missing
+    os.makedirs(save_dir, exist_ok=True)
+    
+    av = AutoViz_Class()
+    
+    print(f"\nGenerating EDA images in '{save_dir}'...")
+    av.AutoViz(
+        filename="",
+        sep=",",
+        depVar=target_col,
+        dfte=df,
+        header=0,
+        verbose=1,
+        chart_format='png',
+        max_rows_analyzed=15000,
+        max_cols_analyzed=30,
+        save_plot_dir=save_dir
+    )
+    
+    # Verify creation
+    if os.path.exists(save_dir):
+        print(f"Saved {len(os.listdir(save_dir))} EDA images to {save_dir}")
+    else:
+        print("Error: EDA directory not created successfully")

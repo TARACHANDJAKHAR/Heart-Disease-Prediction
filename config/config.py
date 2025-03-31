@@ -14,8 +14,7 @@ DATASETS = [
     "processed.cleveland.data",
     "processed.hungarian.data",
     "processed.switzerland.data",
-    "processed.va.data",
-    "processed.new.data"
+    "processed.va.data"
 ]
 
 # Column names
@@ -53,3 +52,5 @@ SGD_PARAMS = {
     "learning_rate": ["constant", "optimal", "invscaling"],
     "max_iter": [1000, 2000]
 }
+MODEL_FILENAME = "heart_disease_model.pkl" 
+MODEL_FILENAME_DT = "decision_tree_model.pkl"

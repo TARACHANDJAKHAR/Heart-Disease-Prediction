@@ -30,6 +30,7 @@ Parth Parmar
 
 Date: 2025-03-23
 Main Pipeline
+Date: 2025-03-26
 """
 
 import os
@@ -48,6 +49,8 @@ from src.model import (
     train_sgd_classifier,
     evaluate_model
 )
+from src.data_processing import load_and_combine_datasets, clean_data, split_data
+from src.model import train_model, evaluate_model, train_decision_tree, evaluate_decision_tree
 from src.utils import save_model
 from config.config import (
     DATA_DIR, DATASETS, COLUMN_NAMES,
@@ -55,7 +58,9 @@ from config.config import (
     MODEL_DIR, MODEL_FILENAME,
     IMAGE_DATA_DIR,
     RANDOM_STATE, TEST_SIZE, MODEL_DIR,
-    LOGISTIC_FILENAME, SGD_FILENAME
+    LOGISTIC_FILENAME, SGD_FILENAME,
+    MODEL_DIR, MODEL_FILENAME,MODEL_FILENAME_DT,
+    IMAGE_DATA_DIR
 )
 from model import train_svm_model, train_knn_model
 
@@ -94,6 +99,18 @@ def main():
     
     # Save the model
     save_model(svm_model, "svm"+MODEL_FILENAME, model_dir=MODEL_DIR)
+    save_model(rf_model, MODEL_FILENAME, model_dir=MODEL_DIR)
+
+    # Train Decision Tree model
+    print("\nTraining Decision Tree model...")
+    dt_model = train_decision_tree(x_train, y_train, random_state=RANDOM_STATE)
+    
+    # Evaluate Decision Tree model
+    dt_accuracy, dt_report = evaluate_decision_tree(dt_model, x_test, y_test)
+
+    #save desicion tree
+    save_model(dt_model, MODEL_FILENAME_DT, model_dir=MODEL_DIR)
+    
     
     print("\nPipeline completed successfully!")
     print("=" * 50)
