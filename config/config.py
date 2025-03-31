@@ -14,8 +14,7 @@ DATASETS = [
     "processed.cleveland.data",
     "processed.hungarian.data",
     "processed.switzerland.data",
-    "processed.va.data",
-    "processed.new.data"
+    "processed.va.data"
 ]
 
 # Column names for the dataset

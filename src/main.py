@@ -38,7 +38,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.data_processing import load_and_combine_datasets, clean_data, split_data
-from src.model import train_model, evaluate_model
+from src.model import train_model, evaluate_model, train_decision_tree, evaluate_decision_tree
 from src.utils import save_model
 from config.config import (
     DATA_DIR, DATASETS, COLUMN_NAMES,
@@ -76,10 +76,10 @@ def main():
 
     # Train Decision Tree model
     print("\nTraining Decision Tree model...")
-    dt_model = train_model(x_train, y_train, random_state=RANDOM_STATE)
+    dt_model = train_decision_tree(x_train, y_train, random_state=RANDOM_STATE)
     
     # Evaluate Decision Tree model
-    dt_accuracy, dt_report = evaluate_model(dt_model, x_test, y_test)
+    dt_accuracy, dt_report = evaluate_decision_tree(dt_model, x_test, y_test)
 
     #save desicion tree
     save_model(dt_model, MODEL_FILENAME_DT, model_dir=MODEL_DIR)
