@@ -9,14 +9,14 @@ from typing import Tuple, Union, Any, Dict, List
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.model_selection import GridSearchCV, StratifiedKFold, RandomizedSearchCV
+from sklearn.model_selection import StratifiedKFold, RandomizedSearchCV
 from sklearn.metrics import (accuracy_score, classification_report, 
-                            confusion_matrix, ConfusionMatrixDisplay,
+                            confusion_matrix,
                             make_scorer, f1_score, precision_score, recall_score)
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
+from sklearn.preprocessing import RobustScaler, MinMaxScaler
 from sklearn.feature_selection import SelectKBest, f_classif
 from imblearn.over_sampling import SMOTE
 from imblearn.pipeline import Pipeline as ImbPipeline
@@ -100,7 +100,7 @@ def train_svm_model(
     # Use RandomizedSearchCV with more iterations
     search = RandomizedSearchCV(
         estimator=pipe,
-        param_distributions=RF_PARAMS,
+        param_distributions=SVM_PARAMS,
         n_iter=50,
         cv=create_cv_strategy(),
         verbose=1,
@@ -142,7 +142,7 @@ def train_knn_model(
     # Use RandomizedSearchCV for more efficient search
     search = RandomizedSearchCV(
         estimator=pipe,
-        param_distributions=RF_PARAMS,
+        param_distributions=KNN_PARAMS,
         n_iter=50,
         cv=create_cv_strategy(),
         verbose=1,
@@ -170,20 +170,17 @@ def train_logistic_regression(
 ) -> LogisticRegression:
     """Train Logistic Regression with hyperparameter tuning"""
     print("\nTraining Logistic Regression model...")
-    
+
     # Create pipeline with robust preprocessing
     pipe = make_pipeline(
         RobustScaler(),
         LogisticRegression(random_state=random_state, class_weight='balanced')
     )
-    
-    # Create scorer dictionary with zero division handling
-    scorers = create_scorers()
-    
+
     # Use RandomizedSearchCV with more iterations
     search = RandomizedSearchCV(
         estimator=pipe,
-        param_distributions=RF_PARAMS,
+        param_distributions=LOGISTIC_PARAMS,
         n_iter=50,
         cv=create_cv_strategy(),
         verbose=1,
@@ -224,7 +221,7 @@ def train_sgd_classifier(
     # Use RandomizedSearchCV for more efficient search
     search = RandomizedSearchCV(
         estimator=pipe,
-        param_distributions=RF_PARAMS,
+        param_distributions=SGD_PARAMS,
         n_iter=50,
         cv=create_cv_strategy(),
         verbose=1,
@@ -265,7 +262,7 @@ def train_decision_tree(
     # Use RandomizedSearchCV with more iterations
     search = RandomizedSearchCV(
         estimator=pipe,
-        param_distributions=RF_PARAMS,
+        param_distributions=DT_PARAMS,
         n_iter=50,
         cv=create_cv_strategy(),
         verbose=1,

@@ -30,21 +30,18 @@ Parth Parmar
 
 Date: 2025-03-23
 Main Pipeline
-Date: 2025-03-26
 """
+
 import pandas as pd
 import os
 import sys
 import argparse
-import time
-from typing import Dict, Any
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.data_processing import (
     load_and_combine_datasets,
     clean_data,
     split_data,
-    perform_eda
 )
 from src.model import (
     train_model,
@@ -65,11 +62,6 @@ def main():
         choices=["random_forest", "svm", "knn", "logistic", "sgd", "decision_tree", "all", "compare"],
         help="Model type to train or 'compare' to find best model"
     )
-    parser.add_argument(
-        "--eda",
-        action="store_true",
-        help="Perform Exploratory Data Analysis"
-    )
     args = parser.parse_args()
 
     try:
@@ -80,11 +72,6 @@ def main():
         # Clean the data and process images if available
         print("\nCleaning and preprocessing the data...")
         df = clean_data(df, image_dir=IMAGE_DATA_DIR)
-        
-        # Perform EDA if requested
-        if args.eda:
-            print("\nPerforming Exploratory Data Analysis...")
-            perform_eda(df)
         
         # Split the data
         print("\nSplitting data into training and test sets...")

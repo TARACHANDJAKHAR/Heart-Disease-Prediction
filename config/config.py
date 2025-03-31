@@ -84,17 +84,18 @@ KNN_PARAMS = {
 # Logistic Regression Config
 LOGISTIC_PARAMS = {
     'logisticregression__C': [0.1, 1.0, 10.0, 100.0, 1000.0],
-    'logisticregression__penalty': ['l1', 'l2', 'elasticnet'],
+    'logisticregression__penalty': ['l1', 'l2'],
     'logisticregression__solver': ['liblinear', 'saga'],
     'logisticregression__max_iter': [100, 200, 300, 1000],
 }
 
 # SGD Config
 SGD_PARAMS = {
-    'sgdclassifier__loss': ['hinge', 'log_loss', 'modified_huber', 'squared_hinge', 'perceptron', 'squared_error'],
+    'sgdclassifier__loss': ['hinge', 'log_loss', 'modified_huber', 'squared_hinge'],
     'sgdclassifier__alpha': [0.0001, 0.001, 0.01, 0.1, 1],
-    'sgdclassifier__penalty': ['l1', 'l2', 'elasticnet', 'none'],
+    'sgdclassifier__penalty': ['l1', 'l2', 'elasticnet', None],
     'sgdclassifier__learning_rate': ['constant', 'optimal', 'invscaling', 'adaptive'],
+    'sgdclassifier__eta0': [0.0001, 0.001, 0.01],
     'sgdclassifier__max_iter': [1000, 2000, 3000],
 }
 
@@ -103,8 +104,8 @@ DT_PARAMS = {
     'decisiontreeclassifier__max_depth': [3, 5, 10, 20, None, 30, 50],
     'decisiontreeclassifier__min_samples_split': [2, 5, 10, 20, 50],
     'decisiontreeclassifier__min_samples_leaf': [1, 2, 4, 8, 16],
-    'decisiontreeclassifier__max_features': ['sqrt', 'log2', None, 'auto'],
-    'decisiontreeclassifier__criterion': ['gini', 'entropy', 'log_loss', 'poisson'],
+    'decisiontreeclassifier__max_features': ['sqrt', 'log2', None],
+    'decisiontreeclassifier__criterion': ['gini', 'entropy', 'log_loss'],
     'decisiontreeclassifier__splitter': ['best', 'random'],
     'decisiontreeclassifier__class_weight': ['balanced', None]
 }

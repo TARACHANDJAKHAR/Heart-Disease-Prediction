@@ -3,12 +3,9 @@ Data Processing Module
 """
 
 import pandas as pd
-import numpy as np
 from typing import List, Tuple, Optional, Dict
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
 import os
-from autoviz.AutoViz_Class import AutoViz_Class
 from .image_processing import process_medical_image, combine_image_and_tabular_data
 
 
@@ -180,36 +177,3 @@ def split_data(
     
     return x_train, x_test, y_train, y_test
 
-def perform_eda(df: pd.DataFrame, target_col: str = "target", save_dir: str = "EDA_Reports"):
-    """
-    Perform automated EDA with image outputs.
-    Creates directory if it doesn't exist.
-    """
-    print("\nPerforming Exploratory Data Analysis...")
-    
-    # Create directory if missing
-    os.makedirs(save_dir, exist_ok=True)
-    
-    try:
-        # Initialize AutoViz
-        AV = AutoViz_Class()
-        
-        # Generate EDA report
-        dft = AV.AutoViz(
-            filename="",
-            sep=",",
-            depVar=target_col,
-            dfte=df,
-            header=0,
-            verbose=0,  # Reduce verbosity
-            lowess=False,
-            chart_format="png",
-            max_rows_analyzed=150000,
-            max_cols_analyzed=30,
-            save_plot_dir=save_dir
-        )
-        
-        print(f"\nEDA reports saved to {save_dir}")
-    except Exception as e:
-        print(f"Error during EDA: {str(e)}")
-        print("Continuing with model training...")

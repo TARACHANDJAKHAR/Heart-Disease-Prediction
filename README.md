@@ -78,11 +78,6 @@ heart-disease-prediction/
    python src/main.py --model all
    ```
 
-4. Perform EDA before training:
-   ```bash
-   python src/main.py --model compare --eda
-   ```
-
 ### Model Comparison
 
 The comparison process:
