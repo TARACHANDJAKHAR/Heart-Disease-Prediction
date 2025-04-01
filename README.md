@@ -17,6 +17,12 @@ heart-disease-prediction/
 │   ├── processed/         # Processed data files
 │   └── images/            # Medical report images
 ├── models/                 # Saved models
+│   ├── rf_model.joblib    # Random Forest model
+│   ├── svm_model.joblib   # SVM model
+│   ├── knn_model.joblib   # KNN model
+│   ├── lr_model.joblib    # Logistic Regression model
+│   ├── sgd_model.joblib   # SGD model
+│   ├── dt_model.joblib    # Decision Tree model
 │   └── best_model.pkl     # Best performing model
 ├── config/                # Configuration files
 │   └── config.py         # Model and data configurations
@@ -30,16 +36,18 @@ heart-disease-prediction/
 - Data preprocessing and cleaning
 - Medical image processing and feature extraction
 - Multiple ML model implementations:
-  - Random Forest
-  - Support Vector Machine (SVM)
-  - K-Nearest Neighbors (KNN)
-  - Logistic Regression
-  - Stochastic Gradient Descent (SGD)
-  - Decision Tree
+  - Random Forest (rf)
+  - Support Vector Machine (svm)
+  - K-Nearest Neighbors (knn)
+  - Logistic Regression (lr)
+  - Stochastic Gradient Descent (sgd)
+  - Decision Tree (dt)
 - Hyperparameter tuning for all models
 - Model comparison and selection
 - Comprehensive evaluation metrics
 - Exploratory Data Analysis (EDA)
+- Model persistence and loading
+- Force retraining option for model updates
 
 ## Setup Instructions
 
@@ -65,27 +73,42 @@ heart-disease-prediction/
 
 2. Train a specific model:
    ```bash
-   python src/main.py --model random_forest
+   python src/main.py --model rf
    python src/main.py --model svm
    python src/main.py --model knn
-   python src/main.py --model logistic
+   python src/main.py --model lr
    python src/main.py --model sgd
-   python src/main.py --model decision_tree
+   python src/main.py --model dt
    ```
 
-3. Train all models:
+3. Train all basic models:
    ```bash
    python src/main.py --model all
    ```
 
+### Retraining Models
+
+To force retraining of models (useful when data or parameters change):
+```bash
+# Retrain all models
+python src/main.py --model all --retrain
+
+# Retrain a specific model
+python src/main.py --model rf --retrain
+
+# Retrain and compare all models
+python src/main.py --model compare --retrain
+```
+
 ### Model Comparison
 
 The comparison process:
-1. Trains each model with hyperparameter tuning
+1. Evaluates existing models or trains new ones if needed
 2. Evaluates models using multiple metrics:
    - Accuracy
    - F1 Score
-   - Training Time
+   - Precision
+   - Recall
 3. Selects the best model based on F1 Score
 4. Saves the best model as `best_model.pkl`
 5. Generates detailed comparison reports
@@ -96,13 +119,14 @@ The comparison process:
 - Best model is saved as `best_model.pkl`
 - EDA reports are saved in `EDA_Reports/` (if --eda flag is used)
 - Detailed evaluation metrics and confusion matrices are displayed
+- Training time is shown when models are retrained
 
 ## Model Selection Criteria
 
 The best model is selected based on:
 1. F1 Score (primary metric)
 2. Accuracy
-3. Training Time
+3. Model stability and reliability
 
 ## Contributing
 

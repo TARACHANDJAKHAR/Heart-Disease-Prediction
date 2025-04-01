@@ -59,8 +59,13 @@ def main():
         "--model",
         type=str,
         required=True,
-        choices=["random_forest", "svm", "knn", "logistic", "sgd", "decision_tree", "all", "compare"],
+        choices=["rf", "svm", "knn", "lr", "sgd", "dt", "all", "compare"],
         help="Model type to train or 'compare' to find best model"
+    )
+    parser.add_argument(
+        "--retrain",
+        action="store_true",
+        help="Force retraining of models even if they exist (useful when data or parameters change)"
     )
     args = parser.parse_args()
 
@@ -80,7 +85,7 @@ def main():
         if args.model == "compare":
             # Compare all models and find the best one
             print("\nStarting model comparison to find the best model...")
-            results = compare_models(x_train, y_train, x_test, y_test, RANDOM_STATE)
+            results = compare_models(x_train, y_train, x_test, y_test, RANDOM_STATE, force_retrain=args.retrain)
             
             # Print detailed comparison results
             print("\nDetailed Model Comparison Results:")
@@ -89,24 +94,26 @@ def main():
                 print(f"\n{model_name.upper()}:")
                 print(f"Accuracy: {model_results['accuracy']:.4f}")
                 print(f"F1 Score: {model_results['f1_score']:.4f}")
-                print(f"Training Time: {model_results['training_time']:.2f}s")
                 print("-" * 30)
             
             print("\nBest Model Selected:")
             print(f"Model Type: {results['best_model_name']}")
             print(f"F1 Score: {results['best_score']:.4f}")
             print(f"Accuracy: {results['all_results'][results['best_model_name']]['accuracy']:.4f}")
-            print(f"Training Time: {results['all_results'][results['best_model_name']]['training_time']:.2f}s")
         else:
             # Train specific model(s)
             if args.model == "all":
-                models = ["random_forest", "svm", "knn", "logistic", "sgd", "decision_tree"]
-                for model_name in models:
-                    print(f"\nTraining {model_name}...")
-                    model = train_model(model_name, x_train, y_train, x_test, y_test, RANDOM_STATE)
-                    print(f"\nCompleted training {model_name}")
+                # Basic models
+                basic_models = ["rf", "svm", "knn", "lr", "sgd", "dt"]
+                
+                # Train all basic models
+                print("\nTraining all basic models...")
+                print("=" * 50)
+                for model_name in basic_models:
+                    model = train_model(model_name, x_train, y_train, x_test, y_test, RANDOM_STATE, force_retrain=args.retrain)
+                    print(f"Completed training {model_name}")
             else:
-                model = train_model(args.model, x_train, y_train, x_test, y_test, RANDOM_STATE)
+                model = train_model(args.model, x_train, y_train, x_test, y_test, RANDOM_STATE, force_retrain=args.retrain)
                 print(f"\nCompleted training {args.model}")
         
         print("\nPipeline completed successfully!")

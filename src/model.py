@@ -163,7 +163,7 @@ def train_knn_model(
     
     return search.best_estimator_
 
-def train_logistic_regression(
+def train_lr_model(
     x_train: pd.DataFrame, 
     y_train: pd.Series, 
     random_state: int = RANDOM_STATE
@@ -201,7 +201,7 @@ def train_logistic_regression(
 
     return search.best_estimator_
 
-def train_sgd_classifier(
+def train_sgd_model(
     x_train: pd.DataFrame,
     y_train: pd.Series,
     random_state: int = RANDOM_STATE
@@ -242,7 +242,7 @@ def train_sgd_classifier(
 
     return search.best_estimator_
 
-def train_decision_tree(
+def train_dt_model(
     x_train: pd.DataFrame,
     y_train: pd.Series,
     random_state: int = RANDOM_STATE
@@ -283,30 +283,60 @@ def train_decision_tree(
 
     return search.best_estimator_
 
+def check_model_exists(model_name: str) -> bool:
+    """Check if a model file exists in the models directory"""
+    model_path = os.path.join(MODEL_DIR, f"{model_name}_model.joblib")
+    return os.path.exists(model_path)
+
+def load_saved_model(model_name: str) -> Any:
+    """Load a saved model from the models directory"""
+    model_path = os.path.join(MODEL_DIR, f"{model_name}_model.joblib")
+    return joblib.load(model_path)
+
 def train_model(
     model_name: str,
     x_train: pd.DataFrame,
     y_train: pd.Series,
     x_test: pd.DataFrame,
     y_test: pd.Series,
-    random_state: int
+    random_state: int,
+    force_retrain: bool = False
 ) -> Any:
-    """Train a single model and save it"""
+    """Train a single model and save it, or load if already exists"""
     from src.utils import save_model
+    
+    # Check if model already exists and retrain is not forced
+    if check_model_exists(model_name) and not force_retrain:
+        print(f"\nLoading existing {model_name} model...")
+        model = load_saved_model(model_name)
+        # Evaluate the loaded model
+        accuracy, report = evaluate_model(model, x_test, y_test)
+        print(f"\nLoaded model performance:")
+        print(f"Accuracy: {accuracy:.4f}")
+        print(f"F1 Score: {report['1']['f1-score']:.4f}")
+        return model
+    
+    # If model doesn't exist or retrain is forced, train it
+    start_time = time.time()
     
     # Map model names to training functions
     model_functions = {
-        "random_forest": train_rf_model,
+        "rf": train_rf_model,
         "svm": train_svm_model,
         "knn": train_knn_model,
-        "logistic": train_logistic_regression,
-        "sgd": train_sgd_classifier,
-        "decision_tree": train_decision_tree
+        "lr": train_lr_model,
+        "sgd": train_sgd_model,
+        "dt": train_dt_model,
+        "ensemble": train_ensemble_model
     }
     
     # Train the model
     train_func = model_functions[model_name]
     model = train_func(x_train, y_train, random_state)
+    
+    # Calculate and display training time
+    training_time = time.time() - start_time
+    print(f"\nTraining completed in {training_time:.2f} seconds")
     
     # Evaluate the model
     accuracy, report = evaluate_model(model, x_test, y_test)
@@ -320,6 +350,56 @@ def train_model(
     print(f"F1 Score: {report['1']['f1-score']:.4f}")
     
     return model
+
+def train_ensemble_model(
+    x_train: pd.DataFrame,
+    y_train: pd.Series,
+    model_names: List[str],
+    random_state: int = RANDOM_STATE,
+    force_retrain: bool = False
+) -> Any:
+    """Train an ensemble model combining basic models"""
+    print(f"\nTraining Ensemble model with {', '.join(model_names)}...")
+    
+    # Map model names to training functions
+    model_functions = {
+        "rf": train_rf_model,
+        "svm": train_svm_model,
+        "knn": train_knn_model,
+        "lr": train_lr_model,
+        "sgd": train_sgd_model,
+        "dt": train_dt_model
+    }
+    
+    # Train or load individual models
+    models = []
+    for model_name in model_names:
+        # Check if model exists and retrain is not forced
+        if check_model_exists(model_name) and not force_retrain:
+            print(f"Loading existing {model_name} model for ensemble...")
+            model = load_saved_model(model_name)
+        else:
+            print(f"Training {model_name} model for ensemble...")
+            model = model_functions[model_name](x_train, y_train, random_state)
+        models.append(model)
+    
+    # Create a voting classifier
+    from sklearn.ensemble import VotingClassifier
+    estimators = [(name, model) for name, model in zip(model_names, models)]
+    ensemble = VotingClassifier(
+        estimators=estimators,
+        voting='soft',  # Use probability predictions
+        weights=None  # Equal weights for all models
+    )
+    
+    # Train the ensemble
+    start_time = time.time()
+    ensemble.fit(x_train, y_train)
+    training_time = time.time() - start_time
+    
+    print(f"\nEnsemble Training Time: {training_time:.1f}s")
+    
+    return ensemble
 
 def evaluate_model(
     model: Union[RandomForestClassifier, SVC, KNeighborsClassifier, 
@@ -347,13 +427,13 @@ def evaluate_model(
     print(classification_report(y_test, y_pred))
 
     # Plot confusion matrix with seaborn
-    plt.figure(figsize=(8, 6))
-    cm = confusion_matrix(y_test, y_pred)
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
-    plt.title("Confusion Matrix")
-    plt.ylabel("True Label")
-    plt.xlabel("Predicted Label")
-    plt.show()
+    # plt.figure(figsize=(8, 6))
+    # cm = confusion_matrix(y_test, y_pred)
+    # sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
+    # plt.title("Confusion Matrix")
+    # plt.ylabel("True Label")
+    # plt.xlabel("Predicted Label")
+    # plt.show()
 
     return accuracy, report
 
@@ -362,7 +442,8 @@ def compare_models(
     y_train: pd.Series,
     x_test: pd.DataFrame,
     y_test: pd.Series,
-    random_state: int = RANDOM_STATE
+    random_state: int = RANDOM_STATE,
+    force_retrain: bool = False
 ) -> Dict[str, Any]:
     """
     Compare all models and find the best performing one.
@@ -373,17 +454,21 @@ def compare_models(
         x_test: Test features
         y_test: Test labels
         random_state: Random state for reproducibility
+        force_retrain: Whether to force retraining of models even if they exist
         
     Returns:
         Dictionary containing best model info and comparison results
     """
-    models = {
-        "random_forest": train_rf_model,
+    from itertools import combinations
+    
+    # Basic models
+    basic_models = {
+        "rf": train_rf_model,
         "svm": train_svm_model,
         "knn": train_knn_model,
-        "logistic": train_logistic_regression,
-        "sgd": train_sgd_classifier,
-        "decision_tree": train_decision_tree
+        "lr": train_lr_model,
+        "sgd": train_sgd_model,
+        "dt": train_dt_model
     }
     
     results = {}
@@ -394,12 +479,11 @@ def compare_models(
     print("\nStarting model comparison...")
     print("=" * 50)
     
-    for model_name, train_func in tqdm(models.items(), desc="Training Models"):
+    # First evaluate basic models
+    for model_name in tqdm(basic_models.keys(), desc="Evaluating Basic Models"):
         try:
-            # Train model
-            start_time = time.time()
-            model = train_func(x_train, y_train, random_state)
-            training_time = time.time() - start_time
+            # Load or train model
+            model = train_model(model_name, x_train, y_train, x_test, y_test, random_state, force_retrain)
             
             # Evaluate model
             accuracy, report = evaluate_model(model, x_test, y_test)
@@ -409,7 +493,6 @@ def compare_models(
                 "model": model,
                 "accuracy": accuracy,
                 "f1_score": f1,
-                "training_time": training_time,
                 "report": report
             }
             
@@ -422,11 +505,51 @@ def compare_models(
             print(f"\n{model_name.upper()} Results:")
             print(f"Accuracy: {accuracy:.4f}")
             print(f"F1 Score: {f1:.4f}")
-            print(f"Training Time: {training_time:.2f}s")
             print("-" * 30)
             
         except Exception as e:
-            print(f"Error training {model_name}: {str(e)}")
+            print(f"Error evaluating {model_name}: {str(e)}")
+            continue
+    
+    # Now evaluate ensemble models with 3 models
+    print("\nEvaluating Ensemble Models with 3 models...")
+    print("=" * 50)
+    
+    # Generate all possible combinations of 3 models
+    model_names = list(basic_models.keys())
+    ensemble_combinations = list(combinations(model_names, 3))
+    
+    for combo in tqdm(ensemble_combinations, desc="Evaluating Ensemble Models"):
+        try:
+            ensemble_name = f"ensemble_{'_'.join(combo)}"
+            
+            # Train ensemble model with the specific combination, passing force_retrain parameter
+            ensemble = train_ensemble_model(x_train, y_train, list(combo), random_state, force_retrain)
+            
+            # Evaluate ensemble
+            accuracy, report = evaluate_model(ensemble, x_test, y_test)
+            f1 = f1_score(y_test, ensemble.predict(x_test))
+            
+            results[ensemble_name] = {
+                "model": ensemble,
+                "accuracy": accuracy,
+                "f1_score": f1,
+                "report": report
+            }
+            
+            # Update best model if ensemble performs better
+            if f1 > best_score:
+                best_score = f1
+                best_model = ensemble
+                best_model_name = ensemble_name
+            
+            print(f"\n{ensemble_name.upper()} Results:")
+            print(f"Accuracy: {accuracy:.4f}")
+            print(f"F1 Score: {f1:.4f}")
+            print("-" * 30)
+            
+        except Exception as e:
+            print(f"Error evaluating ensemble {combo}: {str(e)}")
             continue
     
     # Save best model
@@ -437,7 +560,6 @@ def compare_models(
         print(f"Model Type: {best_model_name}")
         print(f"F1 Score: {best_score:.4f}")
         print(f"Accuracy: {results[best_model_name]['accuracy']:.4f}")
-        print(f"Training Time: {results[best_model_name]['training_time']:.2f}s")
         print(f"Saved to: {best_model_path}")
     
     return {
