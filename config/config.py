@@ -10,6 +10,11 @@ RAW_DATA_DIR = os.path.join("data", "raw")
 IMAGE_DATA_DIR = os.path.join("data", "images")
 EDA_DIR = "EDA_Reports"
 
+# Model directories
+MODEL_DIR = "models"
+ML_MODEL_DIR = os.path.join(MODEL_DIR, "ml")
+DL_MODEL_DIR = os.path.join(MODEL_DIR, "dl")
+
 # Dataset files
 DATASETS = [
     "processed.cleveland.data",
@@ -35,17 +40,26 @@ IMAGE_PREPROCESSING = {
 # Model parameters
 RANDOM_STATE = 42
 TEST_SIZE = 0.2
-MODEL_DIR = "models"
-BEST_MODEL_FILENAME = "best_model.pkl"
 
 # Model filenames
 MODEL_FILENAMES = {
-    "random_forest": "rf_model.pkl",
-    "svm": "svm_model.pkl",
-    "knn": "knn_model.pkl",
-    "logistic": "logistic_model.pkl",
-    "sgd": "sgd_model.pkl",
-    "decision_tree": "decision_tree_model.pkl"
+    # ML Models
+    "rf": "random_forest_model.joblib",
+    "svm": "svm_model.joblib",
+    "knn": "knn_model.joblib",
+    "lr": "logistic_regression_model.joblib",
+    "sgd": "sgd_model.joblib",
+    "dt": "decision_tree_model.joblib",
+    
+    # DL Models
+    "lstm": "lstm_model.joblib",
+    "bilstm": "bilstm_model.joblib",
+    "transformer": "transformer_model.joblib",
+    
+    # Best models
+    "best_model": "best_model.joblib",
+    "best_ml_model": "best_ml_model.joblib",
+    "best_dl_model": "best_dl_model.joblib"
 }
 
 # Cross-validation settings
@@ -108,6 +122,27 @@ DT_PARAMS = {
     'decisiontreeclassifier__criterion': ['gini', 'entropy', 'log_loss'],
     'decisiontreeclassifier__splitter': ['best', 'random'],
     'decisiontreeclassifier__class_weight': ['balanced', None]
+}
+
+# Deep Learning Model Configs
+LSTM_PARAMS = {
+    'hidden_size': 64,
+    'num_layers': 2,
+    'dropout': 0.2
+}
+
+BILSTM_PARAMS = {
+    'hidden_size': 64,
+    'num_layers': 2,
+    'dropout': 0.2
+}
+
+TRANSFORMER_PARAMS = {
+    'd_model': 64,
+    'nhead': 4,
+    'num_layers': 2,
+    'dim_feedforward': 128,
+    'dropout': 0.2
 }
 
 # Model comparison settings
