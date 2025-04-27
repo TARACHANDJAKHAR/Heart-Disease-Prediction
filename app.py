@@ -2,13 +2,19 @@ from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 import pandas as pd
 from src.utils import load_model
-from config.config import MODEL_DIR, BEST_MODEL_FILENAME
+from config.config import MODEL_DIR, MODEL_FILENAMES
 
 app = Flask(__name__)
 CORS(app)
 
-# Load the trained model
-model = load_model(BEST_MODEL_FILENAME, model_dir=MODEL_DIR)
+# Load the best model
+try:
+    # Try loading best ML model first
+    model = load_model(MODEL_FILENAMES["best_model"], model_dir=MODEL_DIR)
+    print("Loaded the best model available.")
+except Exception as e:
+    print(f"Error loading models: {str(e)}")
+    model = None
 
 @app.route('/')
 def home():
@@ -21,6 +27,9 @@ def favicon():
 @app.route('/api/predict', methods=['POST'])
 def predict():
     try:
+        if model is None:
+            return jsonify({'error': 'No trained model available'}), 500
+            
         data = request.get_json()
         features = ['age', 'sex', 'cp', 'trestbps', 'chol', 'fbs', 'restecg', 
                    'thalach', 'exang', 'oldpeak', 'slope', 'ca', 'thal']
