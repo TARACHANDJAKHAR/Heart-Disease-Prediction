@@ -1,6 +1,6 @@
 # Heart Disease Prediction Project
 
-A machine learning project for predicting heart disease using various features and comparing multiple ML models to find the optimal solution.
+A machine learning project for predicting heart disease using various features and comparing multiple ML and DL models to find the optimal solution.
 
 ## Project Structure
 
@@ -8,7 +8,8 @@ A machine learning project for predicting heart disease using various features a
 heart-disease-prediction/
 ├── src/                    # Source code
 │   ├── data_processing.py  # Data loading and preprocessing
-│   ├── model.py           # Model definitions and training
+│   ├── ml_model.py        # ML model definitions and training
+│   ├── dl_models.py       # DL model definitions and training
 │   ├── image_processing.py # Medical image processing
 │   ├── utils.py           # Utility functions
 │   └── main.py            # Main application
@@ -17,16 +18,22 @@ heart-disease-prediction/
 │   ├── processed/         # Processed data files
 │   └── images/            # Medical report images
 ├── models/                 # Saved models
-│   ├── rf_model.joblib    # Random Forest model
-│   ├── svm_model.joblib   # SVM model
-│   ├── knn_model.joblib   # KNN model
-│   ├── lr_model.joblib    # Logistic Regression model
-│   ├── sgd_model.joblib   # SGD model
-│   ├── dt_model.joblib    # Decision Tree model
-│   └── best_model.pkl     # Best performing model
+│   ├── best_model.joblib   # Overall best model
+│   ├── ml/                # ML models
+│   │   ├── rf_model.joblib    # Random Forest model
+│   │   ├── svm_model.joblib   # SVM model
+│   │   ├── knn_model.joblib   # KNN model
+│   │   ├── lr_model.joblib    # Logistic Regression model
+│   │   ├── sgd_model.joblib   # SGD model
+│   │   ├── dt_model.joblib    # Decision Tree model
+│   │   └── best_ml_model.joblib # Best ML model
+│   └── dl/                # DL models
+│       ├── lstm_model.joblib    # LSTM model
+│       ├── bilstm_model.joblib  # BiLSTM model
+│       ├── transformer_model.joblib # Transformer model
+│       └── best_dl_model.joblib # Best DL model
 ├── config/                # Configuration files
 │   └── config.py         # Model and data configurations
-├── EDA_Reports/          # Exploratory Data Analysis reports
 ├── requirements.txt       # Project dependencies
 └── README.md             # Project documentation
 ```
@@ -42,6 +49,10 @@ heart-disease-prediction/
   - Logistic Regression (lr)
   - Stochastic Gradient Descent (sgd)
   - Decision Tree (dt)
+- Deep Learning model implementations:
+  - LSTM
+  - BiLSTM
+  - Transformer
 - Hyperparameter tuning for all models
 - Model comparison and selection
 - Comprehensive evaluation metrics
@@ -66,24 +77,35 @@ heart-disease-prediction/
 
 ### Basic Usage
 
-1. Train and compare all models to find the best one:
+1. Train and compare ML models:
    ```bash
-   python src/main.py --model compare
+   python src/main.py --model_type ml --model compare
    ```
 
-2. Train a specific model:
+2. Train and compare DL models:
    ```bash
-   python src/main.py --model rf
-   python src/main.py --model svm
-   python src/main.py --model knn
-   python src/main.py --model lr
-   python src/main.py --model sgd
-   python src/main.py --model dt
+   python src/main.py --model_type dl --model compare
    ```
 
-3. Train all basic models:
+3. Train and compare both ML and DL models:
    ```bash
-   python src/main.py --model all
+   python src/main.py --model_type all --model compare
+   ```
+
+4. Train a specific model:
+   ```bash
+   # ML models
+   python src/main.py --model_type ml --model rf
+   python src/main.py --model_type ml --model svm
+   python src/main.py --model_type ml --model knn
+   python src/main.py --model_type ml --model lr
+   python src/main.py --model_type ml --model sgd
+   python src/main.py --model_type ml --model dt
+
+   # DL models
+   python src/main.py --model_type dl --model lstm
+   python src/main.py --model_type dl --model bilstm
+   python src/main.py --model_type dl --model transformer
    ```
 
 ### Retraining Models
@@ -91,13 +113,15 @@ heart-disease-prediction/
 To force retraining of models (useful when data or parameters change):
 ```bash
 # Retrain all models
-python src/main.py --model all --retrain
+python src/main.py --model_type all --model compare --retrain
+
+# Retrain specific model type
+python src/main.py --model_type ml --model compare --retrain
+python src/main.py --model_type dl --model compare --retrain
 
 # Retrain a specific model
-python src/main.py --model rf --retrain
-
-# Retrain and compare all models
-python src/main.py --model compare --retrain
+python src/main.py --model_type ml --model rf --retrain
+python src/main.py --model_type dl --model lstm --retrain
 ```
 
 ### Model Comparison
@@ -110,13 +134,13 @@ The comparison process:
    - Precision
    - Recall
 3. Selects the best model based on F1 Score
-4. Saves the best model as `best_model.pkl`
+4. Saves the best model as `best_ml_model.joblib` or `best_dl_model.joblib`
 5. Generates detailed comparison reports
 
 ### Output
 
-- Trained models are saved in the `models/` directory
-- Best model is saved as `best_model.pkl`
+- Trained models are saved in their respective directories (`models/ml/` or `models/dl/`)
+- Best models are saved as `best_ml_model.joblib` and `best_dl_model.joblib`
 - EDA reports are saved in `EDA_Reports/` (if --eda flag is used)
 - Detailed evaluation metrics and confusion matrices are displayed
 - Training time is shown when models are retrained
