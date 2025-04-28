@@ -6,6 +6,7 @@ from config.config import MODEL_DIR, MODEL_FILENAMES
 import base64
 import matplotlib.pyplot as plt
 import io
+import os
 
 app = Flask(__name__)
 CORS(app)
@@ -156,4 +157,5 @@ def get_interpretation():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
