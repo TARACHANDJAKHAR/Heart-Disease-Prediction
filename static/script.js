@@ -4,6 +4,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const predictionMessage = document.getElementById('predictionMessage');
     const predictionProbability = document.getElementById('predictionProbability');
     const errorAlert = document.getElementById('errorAlert');
+    const interpretationResult = document.getElementById('interpretationResult');
+    const showInterpretationBtn = document.getElementById('showInterpretation');
+    const interpretationImage = document.getElementById('interpretationImage');
+    const interpretationText = document.getElementById('interpretationText');
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -55,4 +59,33 @@ document.addEventListener('DOMContentLoaded', () => {
             form.classList.remove('loading');
         }
     });
-}); 
+
+    showInterpretationBtn.addEventListener('click', async () => {
+        try {
+            const response = await fetch('/api/interpretation');
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to load interpretation');
+            }
+
+            // Display the interpretation
+            interpretationImage.innerHTML = `<img src="data:image/png;base64,${data.plot_image}" class="img-fluid" alt="Feature Importance Plot">`;
+            interpretationText.innerHTML = `
+                <div class="user-friendly mb-4">
+                    <h6 class="mb-3">Simple Explanation:</h6>
+                    <pre class="user-friendly-text">${data.user_friendly_interpretation}</pre>
+                </div>
+                <div class="technical">
+                    <h6 class="mb-3">Technical Details:</h6>
+                    <pre class="technical-text">${data.technical_interpretation}</pre>
+                </div>
+            `;
+            interpretationResult.style.display = 'block';
+
+        } catch (error) {
+            errorAlert.textContent = error.message;
+            errorAlert.style.display = 'block';
+        }
+    });
+});
