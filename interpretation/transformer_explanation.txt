@@ -1,0 +1,18 @@
+LIME Explanation Results
+==================================================
+
+Local Prediction: [0.5092069]
+Intercept: {1: np.float64(0.5089499242042506)}
+Explanation Score: 0.2853057096637326
+
+Feature Importance:
+chol <= 214.00: 0.0010
+151.00 < thalach <= 168.00: -0.0002
+age <= 50.00: -0.0002
+120.00 < trestbps <= 130.00: -0.0002
+thal <= 2.00: -0.0001
+oldpeak > 1.60: -0.0001
+exang <= 0.00: 0.0000
+fbs <= 0.00: 0.0000
+restecg <= 0.00: -0.0000
+ca <= 0.00: -0.0000

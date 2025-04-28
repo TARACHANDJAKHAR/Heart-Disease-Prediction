@@ -54,6 +54,9 @@ def train_rf_model(
     """Train Random Forest classifier with hyperparameter tuning"""
     print("\nTraining Random Forest model...")
     
+    # Store feature names
+    feature_names = x_train.columns.tolist()
+    
     pipe = ImbPipeline([
         ('scaler', RobustScaler()),
         ('selector', SelectKBest(f_classif)),
@@ -76,12 +79,18 @@ def train_rf_model(
     search.fit(x_train, y_train)
     training_time = time.time() - start_time
     
+    # Get the best estimator
+    best_estimator = search.best_estimator_
+    
+    # Set feature names for the scaler
+    best_estimator.named_steps['scaler'].feature_names_in_ = feature_names
+    
     print("\nBest Parameters Found (RF):")
     print(search.best_params_)
     print(f"Best Cross-Validation Score (RF): {search.best_score_:.4f}")
     print(f"Training Time: {training_time:.2f}s")
 
-    return search.best_estimator_
+    return best_estimator
 
 def train_svm_model(
     x_train: pd.DataFrame,
@@ -91,10 +100,13 @@ def train_svm_model(
     """Train SVM classifier with hyperparameter tuning"""
     print("\nTraining SVM model...")
     
+    # Store feature names
+    feature_names = x_train.columns.tolist()
+    
     # Create pipeline with robust preprocessing
     pipe = make_pipeline(
         RobustScaler(),  # More robust to outliers
-        SVC(probability=True, random_state=random_state, cache_size=1000, class_weight='balanced')  # Added class_weight
+        SVC(probability=True, random_state=random_state, cache_size=1000, class_weight='balanced')
     )
 
     # Use RandomizedSearchCV with more iterations
@@ -114,12 +126,18 @@ def train_svm_model(
     search.fit(x_train, y_train)
     training_time = time.time() - start_time
     
+    # Get the best estimator
+    best_estimator = search.best_estimator_
+    
+    # Set feature names for the scaler
+    best_estimator.named_steps['robustscaler'].feature_names_in_ = feature_names
+    
     print(f"\nTraining Time: {training_time:.1f}s")
     print("\nBest Parameters (SVM):")
     print(search.best_params_)
     print(f"Validation Score: {search.best_score_:.4f}")
 
-    return search.best_estimator_
+    return best_estimator
 
 def train_knn_model(
     x_train: pd.DataFrame,
@@ -129,11 +147,14 @@ def train_knn_model(
     """Train KNN classifier with hyperparameter tuning"""
     print("\nTraining KNN model...")
     
+    # Store feature names
+    feature_names = x_train.columns.tolist()
+    
     # Create pipeline with feature selection and class weight handling
     pipe = ImbPipeline([
         ('scaler', MinMaxScaler()),
         ('selector', SelectKBest(f_classif)),
-        ('knn', KNeighborsClassifier(weights='distance'))  # Use distance weights
+        ('knn', KNeighborsClassifier(weights='distance'))
     ])
 
     # Create scorer dictionary with zero division handling
@@ -156,12 +177,18 @@ def train_knn_model(
     search.fit(x_train, y_train)
     training_time = time.time() - start_time
     
+    # Get the best estimator
+    best_estimator = search.best_estimator_
+    
+    # Set feature names for the scaler
+    best_estimator.named_steps['scaler'].feature_names_in_ = feature_names
+    
     print(f"\nTraining Time: {training_time:.1f}s")
     print("\nBest Parameters (KNN):")
     print(search.best_params_)
     print(f"Validation Score: {search.best_score_:.4f}")
     
-    return search.best_estimator_
+    return best_estimator
 
 def train_lr_model(
     x_train: pd.DataFrame, 
@@ -170,6 +197,9 @@ def train_lr_model(
 ) -> LogisticRegression:
     """Train Logistic Regression with hyperparameter tuning"""
     print("\nTraining Logistic Regression model...")
+    
+    # Store feature names
+    feature_names = x_train.columns.tolist()
 
     # Create pipeline with robust preprocessing
     pipe = make_pipeline(
@@ -194,12 +224,18 @@ def train_lr_model(
     search.fit(x_train, y_train)
     training_time = time.time() - start_time
     
+    # Get the best estimator
+    best_estimator = search.best_estimator_
+    
+    # Set feature names for the scaler
+    best_estimator.named_steps['robustscaler'].feature_names_in_ = feature_names
+    
     print(f"\nTraining Time: {training_time:.1f}s")
     print("\nBest Parameters Found (Logistic):")
     print(search.best_params_)
     print(f"Best Cross-Validation Score (Logistic): {search.best_score_:.4f}")
 
-    return search.best_estimator_
+    return best_estimator
 
 def train_sgd_model(
     x_train: pd.DataFrame,
@@ -208,6 +244,9 @@ def train_sgd_model(
 ) -> SGDClassifier:
     """Train SGD classifier with hyperparameter tuning"""
     print("\nTraining SGD model...")
+    
+    # Store feature names
+    feature_names = x_train.columns.tolist()
     
     # Create pipeline with robust preprocessing
     pipe = make_pipeline(
@@ -235,12 +274,18 @@ def train_sgd_model(
     search.fit(x_train, y_train)
     training_time = time.time() - start_time
     
+    # Get the best estimator
+    best_estimator = search.best_estimator_
+    
+    # Set feature names for the scaler
+    best_estimator.named_steps['robustscaler'].feature_names_in_ = feature_names
+    
     print(f"\nTraining Time: {training_time:.1f}s")
     print("\nBest Parameters Found (SGD):")
     print(search.best_params_)
     print(f"Best Cross-Validation Score (SGD): {search.best_score_:.4f}")
 
-    return search.best_estimator_
+    return best_estimator
 
 def train_dt_model(
     x_train: pd.DataFrame,
@@ -249,6 +294,9 @@ def train_dt_model(
 ) -> DecisionTreeClassifier:
     """Train Decision Tree with hyperparameter tuning"""
     print("\nTraining Decision Tree model...")
+    
+    # Store feature names
+    feature_names = x_train.columns.tolist()
     
     # Create pipeline with robust preprocessing
     pipe = make_pipeline(
@@ -276,12 +324,18 @@ def train_dt_model(
     search.fit(x_train, y_train)
     training_time = time.time() - start_time
     
+    # Get the best estimator
+    best_estimator = search.best_estimator_
+    
+    # Set feature names for the scaler
+    best_estimator.named_steps['robustscaler'].feature_names_in_ = feature_names
+    
     print(f"\nTraining Time: {training_time:.1f}s")
     print("\nBest Parameters Found (Decision Tree):")
     print(search.best_params_)
     print(f"Best Cross-Validation Score (Decision Tree): {search.best_score_:.4f}")
 
-    return search.best_estimator_
+    return best_estimator
 
 def check_model_exists(model_name: str) -> bool:
     """Check if a model file exists in the models directory"""
@@ -542,7 +596,49 @@ def compare_models(
         except Exception as e:
             print(f"Error evaluating ensemble {combo}: {str(e)}")
             continue
+
+    # Now evaluate ensemble models with 4 models
+    print("\nEvaluating Ensemble Models with 4 models...")
+    print("=" * 50)
     
+    # Generate all possible combinations of 4 models
+    model_names = list(basic_models.keys())
+    ensemble_combinations = list(combinations(model_names, 4))
+    
+    for combo in tqdm(ensemble_combinations, desc="Evaluating Ensemble Models"):
+        try:
+            ensemble_name = f"ensemble_{'_'.join(combo)}"
+            
+            # Train ensemble model with the specific combination
+            ensemble = train_ensemble_model(x_train, y_train, list(combo), random_state, force_retrain)
+            
+            # Evaluate ensemble
+            accuracy, report = evaluate_model(ensemble, x_test, y_test)
+            f1 = f1_score(y_test, ensemble.predict(x_test))
+            
+            results[ensemble_name] = {
+                "model": ensemble,
+                "accuracy": accuracy,
+                "f1_score": f1,
+                "report": report
+            }
+            
+            # Update best model if ensemble performs better
+            if f1 > best_score:
+                best_score = f1
+                best_model = ensemble
+                best_model_name = ensemble_name
+                best_accuracy = accuracy
+            
+            print(f"\n{ensemble_name.upper()} Results:")
+            print(f"Accuracy: {accuracy:.4f}")
+            print(f"F1 Score: {f1:.4f}")
+            print("-" * 30)
+            
+        except Exception as e:
+            print(f"Error evaluating ensemble {combo}: {str(e)}")
+            continue
+
     # Save best model
     if best_model is not None:
         save_model(best_model, MODEL_FILENAMES["best_model"], ML_MODEL_DIR)
