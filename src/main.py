@@ -51,11 +51,17 @@ from src.dl_models import (
     train_dl_model
 )
 from src.utils import save_model
+from src.interpretability import (
+    explain_ml_prediction,
+    explain_dl_prediction,
+    plot_feature_importance,
+    save_explanation
+)
 from config.config import (
     DATA_DIR, DATASETS, COLUMN_NAMES,
     RANDOM_STATE, TEST_SIZE, MODEL_DIR,
-    IMAGE_DATA_DIR, EDA_DIR, DL_MODEL_DIR,
-    ML_MODEL_DIR, MODEL_FILENAMES
+    IMAGE_DATA_DIR, DL_MODEL_DIR,
+    ML_MODEL_DIR, MODEL_FILENAMES, INTERPRETABILITY_DIR
 )
 
 def train_and_compare_models(x_train, y_train, x_test, y_test, model_type, force_retrain=False):
@@ -70,6 +76,23 @@ def train_and_compare_models(x_train, y_train, x_test, y_test, model_type, force
         best_accuracy = results['best_accuracy']
         model_dir = ML_MODEL_DIR
         best_model_filename = MODEL_FILENAMES["best_ml_model"]
+        
+        # Explain best ML model's predictions
+        print("\nGenerating interpretability analysis for best ML model...")
+        feature_names = x_train.columns.tolist()
+        try:
+            explanation = explain_ml_prediction(best_model, x_test, feature_names)
+            
+            # Save explanation and plot
+            explanation_path = os.path.join(INTERPRETABILITY_DIR, f"{best_model_name}_explanation.txt")
+            plot_path = os.path.join(INTERPRETABILITY_DIR, f"{best_model_name}_feature_importance.png")
+            
+            save_explanation(explanation, explanation_path)
+            plot_feature_importance(explanation, feature_names, plot_path)
+            print(f"Interpretability results saved to {INTERPRETABILITY_DIR}")
+        except Exception as e:
+            print(f"Error generating interpretability analysis: {str(e)}")
+        
     else:  # DL models
         dl_models = ["lstm", "bilstm", "transformer"]
         results = {}
@@ -103,6 +126,22 @@ def train_and_compare_models(x_train, y_train, x_test, y_test, model_type, force
         
         model_dir = DL_MODEL_DIR
         best_model_filename = MODEL_FILENAMES["best_dl_model"]
+        
+        # Explain best DL model's predictions
+        print("\nGenerating interpretability analysis for best DL model...")
+        feature_names = x_train.columns.tolist()
+        try:
+            explanation = explain_dl_prediction(best_model, x_test.values, feature_names)
+            
+            # Save explanation and plot
+            explanation_path = os.path.join(INTERPRETABILITY_DIR, f"{best_model_name}_explanation.txt")
+            plot_path = os.path.join(INTERPRETABILITY_DIR, f"{best_model_name}_feature_importance.png")
+            
+            save_explanation(explanation, explanation_path)
+            plot_feature_importance(explanation, feature_names, plot_path)
+            print(f"Interpretability results saved to {INTERPRETABILITY_DIR}")
+        except Exception as e:
+            print(f"Error generating interpretability analysis: {str(e)}")
     
     # Print results
     print(f"\nBest {model_type.upper()} Model Selected:")
@@ -213,9 +252,41 @@ def main():
             if best_ml_score > best_dl_score:
                 print("\nOverall Best Model: ML Model")
                 save_model(best_ml_model, MODEL_FILENAMES["best_model"], MODEL_DIR)
+                
+                # Generate and save LIME results for overall best model
+                print("\nGenerating interpretability analysis for overall best model...")
+                feature_names = x_train.columns.tolist()
+                try:
+                    explanation = explain_ml_prediction(best_ml_model, x_test, feature_names)
+                    
+                    # Save explanation and plot
+                    explanation_path = os.path.join(INTERPRETABILITY_DIR, "best_model_explanation.txt")
+                    plot_path = os.path.join(INTERPRETABILITY_DIR, "best_model_feature_importance.png")
+                    
+                    save_explanation(explanation, explanation_path)
+                    plot_feature_importance(explanation, feature_names, plot_path)
+                    print(f"Best model interpretability results saved to {INTERPRETABILITY_DIR}")
+                except Exception as e:
+                    print(f"Error generating interpretability analysis: {str(e)}")
             else:
                 print("\nOverall Best Model: DL Model")
                 save_model(best_dl_model, MODEL_FILENAMES["best_model"], MODEL_DIR)
+                
+                # Generate and save LIME results for overall best model
+                print("\nGenerating interpretability analysis for overall best model...")
+                feature_names = x_train.columns.tolist()
+                try:
+                    explanation = explain_dl_prediction(best_dl_model, x_test.values, feature_names)
+                    
+                    # Save explanation and plot
+                    explanation_path = os.path.join(INTERPRETABILITY_DIR, "best_model_explanation.txt")
+                    plot_path = os.path.join(INTERPRETABILITY_DIR, "best_model_feature_importance.png")
+                    
+                    save_explanation(explanation, explanation_path)
+                    plot_feature_importance(explanation, feature_names, plot_path)
+                    print(f"Best model interpretability results saved to {INTERPRETABILITY_DIR}")
+                except Exception as e:
+                    print(f"Error generating interpretability analysis: {str(e)}")
         
         print("\nPipeline completed successfully!")
         print("=" * 50)

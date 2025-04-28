@@ -175,6 +175,18 @@
                     <h5 class="card-title">Prediction Result</h5>
                     <p id="predictionMessage" class="card-text"></p>
                     <p id="predictionProbability" class="card-text text-muted"></p>
+                    <button id="showInterpretation" class="btn btn-info mt-2">Show Interpretation</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Interpretation Result -->
+        <div id="interpretationResult" class="mt-4" style="display: none;">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Model Interpretation</h5>
+                    <div id="interpretationImage"></div>
+                    <p id="interpretationText" class="mt-3"></p>
                 </div>
             </div>
         </div>

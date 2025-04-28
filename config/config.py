@@ -8,7 +8,7 @@ import os
 DATA_DIR = os.path.join("data", "processed")
 RAW_DATA_DIR = os.path.join("data", "raw")
 IMAGE_DATA_DIR = os.path.join("data", "images")
-EDA_DIR = "EDA_Reports"
+INTERPRETABILITY_DIR = "interpretation"
 
 # Model directories
 MODEL_DIR = "models"

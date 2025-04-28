@@ -36,3 +36,6 @@ pylint>=2.17.0
 # Testing
 pytest>=7.3.0
 pytest-cov>=4.1.0
+
+# Interpretability
+lime==0.2.0.1
