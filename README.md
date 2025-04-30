@@ -141,7 +141,6 @@ The comparison process:
 
 - Trained models are saved in their respective directories (`models/ml/` or `models/dl/`)
 - Best models are saved as `best_ml_model.joblib` and `best_dl_model.joblib`
-- EDA reports are saved in `EDA_Reports/` (if --eda flag is used)
 - Detailed evaluation metrics and confusion matrices are displayed
 - Training time is shown when models are retrained
 
