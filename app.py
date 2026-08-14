@@ -2,7 +2,6 @@ from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 import pandas as pd
 import joblib
-from config.config import MODEL_DIR, MODEL_FILENAMES
 import base64
 import matplotlib
 matplotlib.use('Agg') # Use non-interactive backend for server
@@ -10,26 +9,37 @@ import matplotlib.pyplot as plt
 import io
 import os
 import numpy as np
+from pathlib import Path
 
 app = Flask(__name__)
 CORS(app)
 
+# Resolve absolute paths based on the location of this file
+BASE_DIR = Path(__file__).resolve().parent
+
+print(f"Project root: {BASE_DIR}")
+
 # Load the best model
+MODEL_PATH = BASE_DIR / "models" / "best_model.joblib"
+print(f"Model path: {MODEL_PATH}")
+print(f"Model exists: {MODEL_PATH.exists()}")
+
 try:
-    model_path = os.path.join(MODEL_DIR, MODEL_FILENAMES["best_model"])
-    if not model_path.endswith('.joblib'):
-        model_path = os.path.splitext(model_path)[0] + '.joblib'
-    model = joblib.load(model_path)
+    model = joblib.load(MODEL_PATH)
     print("Loaded the best model available.")
 except Exception as e:
-    print(f"Error loading models: {str(e)}")
+    print(f"Error loading model from {MODEL_PATH}: {e}")
     model = None
 
 # Initialize LIME Explainer
+DATA_PATH = BASE_DIR / "data" / "processed" / "processed.cleveland.data"
+print(f"Data path: {DATA_PATH}")
+print(f"Data exists: {DATA_PATH.exists()}")
+
 try:
     from lime import lime_tabular
     # Load dataset sample to initialize LIME feature statistics
-    df = pd.read_csv("data/processed/processed.cleveland.data", header=None, na_values=['?'])
+    df = pd.read_csv(DATA_PATH, header=None, na_values=['?'])
     df.dropna(inplace=True)
     X_train = df.iloc[:, :-1].values
     
@@ -45,7 +55,7 @@ try:
     )
     print("LIME Explainer initialized successfully.")
 except Exception as e:
-    print(f"Error initializing LIME: {str(e)}")
+    print(f"Error initializing LIME from {DATA_PATH}: {e}")
     explainer = None
 
 
