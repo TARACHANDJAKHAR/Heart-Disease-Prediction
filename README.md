@@ -1,164 +1,133 @@
-# Heart Disease Prediction Project
+# CardioPredict: Heart Disease Assessment Tool
 
-A machine learning project for predicting heart disease using various features and comparing multiple ML and DL models to find the optimal solution.
+A robust machine learning application for clinical heart disease prediction. This project leverages Scikit-Learn pipelines to process tabular clinical data and Flask to serve predictions via a modern, minimalist web interface.
 
-## Project Structure
+## Overview
 
-```
-heart-disease-prediction/
-├── src/                    # Source code
-│   ├── data_processing.py  # Data loading and preprocessing
-│   ├── ml_model.py        # ML model definitions and training
-│   ├── dl_models.py       # DL model definitions and training
-│   ├── image_processing.py # Medical image processing
-│   ├── utils.py           # Utility functions
-│   └── main.py            # Main application
-├── data/                   # Data files
-│   ├── raw/               # Original data files
-│   ├── processed/         # Processed data files
-│   └── images/            # Medical report images
-├── models/                 # Saved models
-│   ├── best_model.joblib   # Overall best model
-│   ├── ml/                # ML models
-│   │   ├── rf_model.joblib    # Random Forest model
-│   │   ├── svm_model.joblib   # SVM model
-│   │   ├── knn_model.joblib   # KNN model
-│   │   ├── lr_model.joblib    # Logistic Regression model
-│   │   ├── sgd_model.joblib   # SGD model
-│   │   ├── dt_model.joblib    # Decision Tree model
-│   │   └── best_ml_model.joblib # Best ML model
-│   └── dl/                # DL models
-│       ├── lstm_model.joblib    # LSTM model
-│       ├── bilstm_model.joblib  # BiLSTM model
-│       ├── transformer_model.joblib # Transformer model
-│       └── best_dl_model.joblib # Best DL model
-├── config/                # Configuration files
-│   └── config.py         # Model and data configurations
-├── requirements.txt       # Project dependencies
-└── README.md             # Project documentation
-```
+CardioPredict serves as an educational and research tool designed to demonstrate the application of machine learning in early diagnosis. It evaluates patient metrics (e.g., resting blood pressure, cholesterol, ECG results) to predict the likelihood of coronary artery disease. A core focus of this project is **model interpretability**, utilizing LIME (Local Interpretable Model-agnostic Explanations) to dynamically explain why the model made a specific prediction for a given patient.
 
 ## Features
 
-- Data preprocessing and cleaning
-- Medical image processing and feature extraction
-- Multiple ML model implementations:
-  - Random Forest (rf)
-  - Support Vector Machine (svm)
-  - K-Nearest Neighbors (knn)
-  - Logistic Regression (lr)
-  - Stochastic Gradient Descent (sgd)
-  - Decision Tree (dt)
-- Deep Learning model implementations:
-  - LSTM
-  - BiLSTM
-  - Transformer
-- Hyperparameter tuning for all models
-- Model comparison and selection
-- Comprehensive evaluation metrics
-- Exploratory Data Analysis (EDA)
-- Model persistence and loading
-- Force retraining option for model updates
+- **Clinical Assessment**: Web-based form accepting 13 standard clinical features.
+- **Robust ML Pipeline**: Implements advanced Scikit-Learn pipelines integrating data scaling, feature selection (`SelectKBest`), and classification.
+- **Dynamic Interpretability**: Real-time generation of LIME explanations for every prediction, showing exact feature contributions.
+- **Premium UX**: A clean, accessible, and responsive user interface designed with a clinical aesthetic.
+- **Production-Ready**: Architected to separate heavy training dependencies from lightweight inference deployment.
 
-## Setup Instructions
+## Architecture
 
-1. Create a virtual environment:
+The project strictly separates the training environment from the production web application.
+
+```text
+User 
+ └─> Frontend (HTML/CSS/JS)
+      └─> Flask API (/api/predict)
+           ├─> Pandas DataFrame
+           ├─> Scikit-Learn Inference Pipeline
+           │    └─> Model Prediction & Probability
+           └─> Flask API (/api/interpretation)
+                └─> LIME Explainer (Dynamic Generation)
+```
+
+## Machine Learning
+
+- **Dataset**: Combined UCI Heart Disease dataset (Cleveland, Hungarian, Switzerland, VA).
+- **Preprocessing**: Robust scaling, missing-value handling, and K-Best feature selection are encapsulated inside an `ImbPipeline` to completely prevent train/test contamination.
+- **Model Selection**: The pipeline evaluates Random Forest, SVM, KNN, Logistic Regression, SGD, and Decision Trees using `RandomizedSearchCV` with Stratified K-Fold cross-validation.
+- **Deep Learning (Experimental)**: PyTorch implementations of LSTM and Transformers are included in `src/dl_models.py` as a comparative study to demonstrate sequence models on tabular data, though Scikit-Learn is prioritized for production efficiency.
+
+## Tech Stack
+
+- **Backend**: Python, Flask, Gunicorn
+- **Machine Learning**: Scikit-Learn, Pandas, NumPy, Joblib, LIME
+- **Frontend**: HTML5, Vanilla CSS3, JavaScript (ES6)
+
+## Project Structure
+
+```text
+.
+├── app.py                      # Flask API entry point
+├── config/                     # Configuration and hyperparameters
+├── data/                       # Raw and processed datasets
+├── models/                     # Serialized best_model.joblib
+├── src/                        # Model training and data processing logic
+├── static/                     # CSS and JS for the frontend
+├── templates/                  # HTML templates
+├── requirements.txt            # Lightweight production dependencies
+└── requirements-dev.txt        # Heavy dependencies for training (PyTorch, OpenCV)
+```
+
+## Installation & Running Locally
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/Heart-Disease-Prediction.git
+   cd Heart-Disease-Prediction
+   ```
+
+2. **Create a virtual environment**
    ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
-2. Install dependencies:
+3. **Install dependencies**
    ```bash
+   # Install production dependencies to run the web app
    pip install -r requirements.txt
+   
+   # (Optional) If you want to train models, also run:
+   # pip install -r requirements-dev.txt
    ```
 
-## Usage
-
-### Basic Usage
-
-1. Train and compare ML models:
+4. **Run the Flask application**
    ```bash
-   python src/main.py --model_type ml --model compare
+   python app.py
    ```
+   The application will be available at `http://localhost:5000`.
 
-2. Train and compare DL models:
-   ```bash
-   python src/main.py --model_type dl --model compare
-   ```
+## API Documentation
 
-3. Train and compare both ML and DL models:
-   ```bash
-   python src/main.py --model_type all --model compare
-   ```
+### `POST /api/predict`
+Predicts the likelihood of heart disease based on patient metrics.
+- **Request Body**: JSON object containing 13 clinical features (`age`, `sex`, `cp`, `trestbps`, `chol`, `fbs`, `restecg`, `thalach`, `exang`, `oldpeak`, `slope`, `ca`, `thal`).
+- **Response**: 
+  ```json
+  {
+    "prediction": 1,
+    "probability": 0.85,
+    "message": "Heart Disease Detected"
+  }
+  ```
 
-4. Train a specific model:
-   ```bash
-   # ML models
-   python src/main.py --model_type ml --model rf
-   python src/main.py --model_type ml --model svm
-   python src/main.py --model_type ml --model knn
-   python src/main.py --model_type ml --model lr
-   python src/main.py --model_type ml --model sgd
-   python src/main.py --model_type ml --model dt
+### `POST /api/interpretation`
+Generates a dynamic LIME explanation for the given patient metrics.
+- **Request Body**: Same as `/api/predict`.
+- **Response**: Returns a JSON object containing a Base64-encoded feature importance plot, a user-friendly summary, and a technical breakdown.
 
-   # DL models
-   python src/main.py --model_type dl --model lstm
-   python src/main.py --model_type dl --model bilstm
-   python src/main.py --model_type dl --model transformer
-   ```
+## Model Explainability
 
-### Retraining Models
+We integrate **LIME (Local Interpretable Model-agnostic Explanations)** directly into the inference pipeline. When an assessment is generated, the LIME explainer perturbs the user's input features around their local neighborhood to approximate the complex model with a simple linear model. This reveals exactly which features drove the prediction up or down, fostering trust and transparency.
 
-To force retraining of models (useful when data or parameters change):
-```bash
-# Retrain all models
-python src/main.py --model_type all --model compare --retrain
+## Screenshots
 
-# Retrain specific model type
-python src/main.py --model_type ml --model compare --retrain
-python src/main.py --model_type dl --model compare --retrain
+*(Add screenshots of your UI here)*
+- `![Assessment Form](link-to-image)`
+- `![Prediction Result](link-to-image)`
+- `![LIME Explanation](link-to-image)`
 
-# Retrain a specific model
-python src/main.py --model_type ml --model rf --retrain
-python src/main.py --model_type dl --model lstm --retrain
-```
+## Deployment
 
-### Model Comparison
+The application is configured for deployment on platforms like Render or Heroku. 
+- The lightweight `requirements.txt` ensures that the build process will not exceed free-tier memory limits.
+- The `render.yaml` and `Procfile` are configured to launch the app using `gunicorn app:app`.
 
-The comparison process:
-1. Evaluates existing models or trains new ones if needed
-2. Evaluates models using multiple metrics:
-   - Accuracy
-   - F1 Score
-   - Precision
-   - Recall
-3. Selects the best model based on F1 Score
-4. Saves the best model as `best_ml_model.joblib` or `best_dl_model.joblib`
-5. Generates detailed comparison reports
+## Disclaimer
 
-### Output
+This application is intended for **educational and research purposes only**. It is a machine learning demonstration and should not be used as a substitute for professional clinical diagnosis or medical advice.
 
-- Trained models are saved in their respective directories (`models/ml/` or `models/dl/`)
-- Best models are saved as `best_ml_model.joblib` and `best_dl_model.joblib`
-- Detailed evaluation metrics and confusion matrices are displayed
-- Training time is shown when models are retrained
+## Future Improvements
 
-## Model Selection Criteria
-
-The best model is selected based on:
-1. F1 Score (primary metric)
-2. Accuracy
-3. Model stability and reliability
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+- Incorporate automated `pytest` suites for API endpoints and data processing logic.
+- Expand input validation using Pydantic.
+- Containerize the application using Docker for simpler deployment workflows.

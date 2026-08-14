@@ -1,0 +1,23 @@
+# Deep Learning
+torch>=2.0.0
+torchvision>=0.15.0
+transformers>=4.30.0
+
+# Image processing
+opencv-python>=4.8.0
+pytesseract>=0.3.10
+Pillow>=10.0.0
+
+# Model evaluation and visualization
+imbalanced-learn>=0.10.0
+joblib>=1.3.0
+tqdm>=4.65.0
+
+# Type checking and development
+mypy>=1.5.0
+black>=23.0.0
+pylint>=2.17.0
+
+# Testing
+pytest>=7.3.0
+pytest-cov>=4.1.0

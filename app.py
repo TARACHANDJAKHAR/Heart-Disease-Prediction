@@ -1,32 +1,63 @@
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 import pandas as pd
-from src.utils import load_model
+import joblib
 from config.config import MODEL_DIR, MODEL_FILENAMES
 import base64
+import matplotlib
+matplotlib.use('Agg') # Use non-interactive backend for server
 import matplotlib.pyplot as plt
 import io
 import os
+import numpy as np
 
 app = Flask(__name__)
 CORS(app)
 
 # Load the best model
 try:
-    # Try loading best ML model first
-    model = load_model(MODEL_FILENAMES["best_model"], model_dir=MODEL_DIR)
+    model_path = os.path.join(MODEL_DIR, MODEL_FILENAMES["best_model"])
+    if not model_path.endswith('.joblib'):
+        model_path = os.path.splitext(model_path)[0] + '.joblib'
+    model = joblib.load(model_path)
     print("Loaded the best model available.")
 except Exception as e:
     print(f"Error loading models: {str(e)}")
     model = None
 
+# Initialize LIME Explainer
+try:
+    from lime import lime_tabular
+    # Load dataset sample to initialize LIME feature statistics
+    df = pd.read_csv("data/processed/processed.cleveland.data", header=None, na_values=['?'])
+    df.dropna(inplace=True)
+    X_train = df.iloc[:, :-1].values
+    
+    feature_names = ['age', 'sex', 'cp', 'trestbps', 'chol', 'fbs', 'restecg', 
+                     'thalach', 'exang', 'oldpeak', 'slope', 'ca', 'thal']
+                     
+    explainer = lime_tabular.LimeTabularExplainer(
+        X_train,
+        feature_names=feature_names,
+        class_names=['No Heart Disease', 'Heart Disease'],
+        mode='classification',
+        random_state=42
+    )
+    print("LIME Explainer initialized successfully.")
+except Exception as e:
+    print(f"Error initializing LIME: {str(e)}")
+    explainer = None
+
+
 @app.route('/')
 def home():
     return render_template('index.html')
 
+
 @app.route('/favicon.ico')
 def favicon():
-    return '', 204  # Return empty response with 204 status
+    return '', 204
+
 
 @app.route('/api/predict', methods=['POST'])
 def predict():
@@ -40,9 +71,14 @@ def predict():
         
         missing_features = [f for f in features if f not in data]
         if missing_features:
-            return jsonify({
-                'error': f'Missing required features: {", ".join(missing_features)}'
-            }), 400
+            return jsonify({'error': f'Missing required features: {", ".join(missing_features)}'}), 400
+            
+        # Basic validation
+        try:
+            for f in features:
+                data[f] = float(data[f])
+        except ValueError:
+            return jsonify({'error': 'All features must be numeric.'}), 400
             
         input_data = pd.DataFrame([data], columns=features)
         prediction = model.predict(input_data)[0]
@@ -55,32 +91,19 @@ def predict():
         })
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Internal server error during prediction.'}), 500
 
-def generate_user_friendly_explanation(lime_results):
+
+def generate_user_friendly_explanation(exp_list, prediction, probability):
     """Convert LIME results into user-friendly explanation"""
     try:
-        # Extract prediction from LIME results more safely
-        for line in lime_results.split('\n'):
-            if 'Local Prediction:' in line:
-                # Extract number between square brackets
-                pred_str = line.split('[')[1].split(']')[0]
-                prediction = float(pred_str)
-                break
-        else:
-            prediction = 0.5  # default if not found
-        
-        # Generate friendly explanation
         friendly_text = "Here's what influenced the model's prediction:\n\n"
         
-        # Calculate confidence - if prediction < 0.5, invert it for proper confidence calculation
-        confidence = (prediction if prediction >= 0.5 else 1 - prediction) * 100
-        friendly_text += f"The model is {confidence:.1f}% confident in its prediction.\n"
-        friendly_text += f"(Prediction value: {prediction:.3f})\n\n"
+        confidence = (probability if prediction == 1 else 1 - probability) * 100
+        friendly_text += f"The model is {confidence:.1f}% confident in its prediction.\n\n"
         
         friendly_text += "Top influencing factors:\n"
         
-        # Map feature names to friendly names
         feature_map = {
             'thal': 'Thalassemia condition',
             'slope': 'ST segment slope',
@@ -97,53 +120,69 @@ def generate_user_friendly_explanation(lime_results):
             'thalach': 'Maximum heart rate'
         }
         
-        # Show top 5 most influential features
-        features = []
-        feature_section_started = False
-        for line in lime_results.split('\n'):
-            if 'Feature Importance:' in line:
-                feature_section_started = True
-                continue
-            if feature_section_started and line.strip():
-                try:
-                    name, value = line.strip().split(':')
-                    features.append((name.strip(), float(value)))
-                except ValueError:
-                    continue  # Skip lines that don't match expected format
-
-        for name, impact in sorted(features, key=lambda x: abs(x[1]), reverse=True)[:5]:
-            # Clean feature name
-            for key, friendly_name in feature_map.items():
+        # Sort by absolute impact
+        sorted_features = sorted(exp_list, key=lambda x: abs(x[1]), reverse=True)[:5]
+        
+        for name, impact in sorted_features:
+            # Replace internal name with friendly name
+            friendly_name = name
+            for key, val in feature_map.items():
                 if key in name:
-                    name = friendly_name
+                    friendly_name = name.replace(key, val)
                     break
             
-            # Add impact description
             if impact > 0:
-                friendly_text += f"• {name} increased the likelihood of heart disease\n"
+                friendly_text += f"• {friendly_name} increased the likelihood of heart disease\n"
             else:
-                friendly_text += f"• {name} decreased the likelihood of heart disease\n"
-        
+                friendly_text += f"• {friendly_name} decreased the likelihood of heart disease\n"
+                
         return friendly_text
-    
     except Exception as e:
-        return f"Could not generate explanation due to error: {str(e)}\n\nRaw results:\n{lime_results}"
+        return f"Could not generate user-friendly explanation."
 
-@app.route('/api/interpretation', methods=['GET'])
+
+@app.route('/api/interpretation', methods=['POST'])
 def get_interpretation():
     try:
-        # Read the technical interpretation text
-        with open('interpretation/best_model_explanation.txt', 'r') as f:
-            tech_interpretation = f.read()
+        if explainer is None or model is None:
+            return jsonify({'error': 'Interpretability module is not available.'}), 500
+
+        data = request.get_json()
+        features = ['age', 'sex', 'cp', 'trestbps', 'chol', 'fbs', 'restecg', 
+                   'thalach', 'exang', 'oldpeak', 'slope', 'ca', 'thal']
+                   
+        input_array = np.array([float(data[f]) for f in features])
         
-        # Generate user-friendly explanation
-        user_friendly_explanation = generate_user_friendly_explanation(tech_interpretation)
+        def predict_proba_fn(x):
+            df = pd.DataFrame(x, columns=features)
+            return model.predict_proba(df)
+
+        # Generate LIME explanation
+        exp = explainer.explain_instance(
+            input_array, 
+            predict_proba_fn, 
+            num_features=10
+        )
         
+        # Get prediction details
+        input_df = pd.DataFrame([input_array], columns=features)
+        prediction = int(model.predict(input_df)[0])
+        probability = float(model.predict_proba(input_df)[0][1])
+
+        exp_list = exp.as_list()
+        user_friendly_explanation = generate_user_friendly_explanation(exp_list, prediction, probability)
+        
+        # Generate raw technical interpretation
+        tech_interpretation = f"Prediction: {prediction}\nProbability: {probability:.4f}\n\nFeature Contributions:\n"
+        for name, impact in exp_list:
+            tech_interpretation += f"{name}: {impact:.4f}\n"
+
         # Create visualization
+        fig = exp.as_pyplot_figure()
+        plt.tight_layout()
         img_buf = io.BytesIO()
-        plt.figure(figsize=(10, 6))
-        # Create plot based on the feature importance data
-        plt.savefig(img_buf, format='png', bbox_inches='tight')
+        fig.savefig(img_buf, format='png', bbox_inches='tight')
+        plt.close(fig)
         img_buf.seek(0)
         img_str = base64.b64encode(img_buf.read()).decode('utf-8')
 
@@ -154,7 +193,8 @@ def get_interpretation():
         })
 
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Internal server error during interpretation.'}), 500
+
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

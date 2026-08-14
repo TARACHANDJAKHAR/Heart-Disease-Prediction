@@ -1,2 +1,27 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Project specifics
 heart+disease
-__pycache__
+models/dl/
+# Note: models/ml/best_model.joblib should be committed or ignored based on size
+
+# IDEs and Tools
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# MacOS
+.DS_Store
